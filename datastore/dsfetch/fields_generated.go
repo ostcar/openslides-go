@@ -682,7 +682,7 @@ func (r *Fetch) ActionWorker_ID(actionWorkerID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ActionWorker_Name(actionWorkerID int) *ValueString {
@@ -714,15 +714,6 @@ func (r *Fetch) ActionWorker_State(actionWorkerID int) *ValueString {
 
 func (r *Fetch) ActionWorker_Timestamp(actionWorkerID int) *ValueInt {
 	key, err := dskey.FromParts("action_worker", actionWorkerID, "timestamp")
-	if err != nil {
-		return &ValueInt{err: err}
-	}
-
-	return &ValueInt{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) ActionWorker_UserID(actionWorkerID int) *ValueInt {
-	key, err := dskey.FromParts("action_worker", actionWorkerID, "user_id")
 	if err != nil {
 		return &ValueInt{err: err}
 	}
@@ -781,7 +772,7 @@ func (r *Fetch) AgendaItem_ID(agendaItemID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) AgendaItem_IsHidden(agendaItemID int) *ValueBool {
@@ -827,6 +818,15 @@ func (r *Fetch) AgendaItem_MeetingID(agendaItemID int) *ValueInt {
 	}
 
 	return &ValueInt{fetch: r, key: key, required: true}
+}
+
+func (r *Fetch) AgendaItem_ModeratorNotes(agendaItemID int) *ValueString {
+	key, err := dskey.FromParts("agenda_item", agendaItemID, "moderator_notes")
+	if err != nil {
+		return &ValueString{err: err}
+	}
+
+	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) AgendaItem_ParentID(agendaItemID int) *ValueMaybeInt {
@@ -889,7 +889,7 @@ func (r *Fetch) AssignmentCandidate_ID(assignmentCandidateID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) AssignmentCandidate_MeetingID(assignmentCandidateID int) *ValueInt {
@@ -970,7 +970,7 @@ func (r *Fetch) Assignment_ID(assignmentID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Assignment_ListOfSpeakersID(assignmentID int) *ValueInt {
@@ -1078,7 +1078,7 @@ func (r *Fetch) ChatGroup_ID(chatGroupID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ChatGroup_MeetingID(chatGroupID int) *ValueInt {
@@ -1159,7 +1159,7 @@ func (r *Fetch) ChatMessage_ID(chatMessageID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ChatMessage_MeetingID(chatMessageID int) *ValueInt {
@@ -1216,13 +1216,22 @@ func (r *Fetch) Committee_ForwardToCommitteeIDs(committeeID int) *ValueIntSlice 
 	return &ValueIntSlice{fetch: r, key: key}
 }
 
+func (r *Fetch) Committee_ForwardingUserID(committeeID int) *ValueMaybeInt {
+	key, err := dskey.FromParts("committee", committeeID, "forwarding_user_id")
+	if err != nil {
+		return &ValueMaybeInt{err: err}
+	}
+
+	return &ValueMaybeInt{fetch: r, key: key}
+}
+
 func (r *Fetch) Committee_ID(committeeID int) *ValueInt {
 	key, err := dskey.FromParts("committee", committeeID, "id")
 	if err != nil {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Committee_ManagerIDs(committeeID int) *ValueIntSlice {
@@ -1288,42 +1297,6 @@ func (r *Fetch) Committee_UserIDs(committeeID int) *ValueIntSlice {
 	return &ValueIntSlice{fetch: r, key: key}
 }
 
-func (r *Fetch) Gender_ID(genderID int) *ValueInt {
-	key, err := dskey.FromParts("gender", genderID, "id")
-	if err != nil {
-		return &ValueInt{err: err}
-	}
-
-	return &ValueInt{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) Gender_Name(genderID int) *ValueString {
-	key, err := dskey.FromParts("gender", genderID, "name")
-	if err != nil {
-		return &ValueString{err: err}
-	}
-
-	return &ValueString{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) Gender_OrganizationID(genderID int) *ValueInt {
-	key, err := dskey.FromParts("gender", genderID, "organization_id")
-	if err != nil {
-		return &ValueInt{err: err}
-	}
-
-	return &ValueInt{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) Gender_UserIDs(genderID int) *ValueIntSlice {
-	key, err := dskey.FromParts("gender", genderID, "user_ids")
-	if err != nil {
-		return &ValueIntSlice{err: err}
-	}
-
-	return &ValueIntSlice{fetch: r, key: key}
-}
-
 func (r *Fetch) Group_AdminGroupForMeetingID(groupID int) *ValueMaybeInt {
 	key, err := dskey.FromParts("group", groupID, "admin_group_for_meeting_id")
 	if err != nil {
@@ -1366,7 +1339,7 @@ func (r *Fetch) Group_ID(groupID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Group_MeetingID(groupID int) *ValueInt {
@@ -1528,7 +1501,7 @@ func (r *Fetch) ImportPreview_ID(importPreviewID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ImportPreview_Name(importPreviewID int) *ValueString {
@@ -1582,7 +1555,7 @@ func (r *Fetch) ListOfSpeakers_ID(listOfSpeakersID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ListOfSpeakers_MeetingID(listOfSpeakersID int) *ValueInt {
@@ -1592,15 +1565,6 @@ func (r *Fetch) ListOfSpeakers_MeetingID(listOfSpeakersID int) *ValueInt {
 	}
 
 	return &ValueInt{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) ListOfSpeakers_ModeratorNotes(listOfSpeakersID int) *ValueString {
-	key, err := dskey.FromParts("list_of_speakers", listOfSpeakersID, "moderator_notes")
-	if err != nil {
-		return &ValueString{err: err}
-	}
-
-	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) ListOfSpeakers_ProjectionIDs(listOfSpeakersID int) *ValueIntSlice {
@@ -1681,7 +1645,7 @@ func (r *Fetch) Mediafile_ID(mediafileID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Mediafile_IsDirectory(mediafileID int) *ValueBool {
@@ -1789,7 +1753,7 @@ func (r *Fetch) MeetingMediafile_ID(meetingMediafileID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MeetingMediafile_InheritedAccessGroupIDs(meetingMediafileID int) *ValueIntSlice {
@@ -2950,7 +2914,7 @@ func (r *Fetch) Meeting_ID(meetingID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Meeting_ImportedAt(meetingID int) *ValueInt {
@@ -3448,26 +3412,17 @@ func (r *Fetch) Meeting_MotionPollDefaultType(meetingID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
-func (r *Fetch) Meeting_MotionPollProjectionMaxColumns(meetingID int) *ValueInt {
-	key, err := dskey.FromParts("meeting", meetingID, "motion_poll_projection_max_columns")
-	if err != nil {
-		return &ValueInt{err: err}
-	}
-
-	return &ValueInt{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) Meeting_MotionPollProjectionNameOrderFirst(meetingID int) *ValueString {
-	key, err := dskey.FromParts("meeting", meetingID, "motion_poll_projection_name_order_first")
-	if err != nil {
-		return &ValueString{err: err}
-	}
-
-	return &ValueString{fetch: r, key: key, required: true}
-}
-
 func (r *Fetch) Meeting_MotionStateIDs(meetingID int) *ValueIntSlice {
 	key, err := dskey.FromParts("meeting", meetingID, "motion_state_ids")
+	if err != nil {
+		return &ValueIntSlice{err: err}
+	}
+
+	return &ValueIntSlice{fetch: r, key: key}
+}
+
+func (r *Fetch) Meeting_MotionStatuteParagraphIDs(meetingID int) *ValueIntSlice {
+	key, err := dskey.FromParts("meeting", meetingID, "motion_statute_paragraph_ids")
 	if err != nil {
 		return &ValueIntSlice{err: err}
 	}
@@ -3565,15 +3520,6 @@ func (r *Fetch) Meeting_MotionsBlockSlideColumns(meetingID int) *ValueInt {
 	return &ValueInt{fetch: r, key: key}
 }
 
-func (r *Fetch) Meeting_MotionsCreateEnableAdditionalSubmitterText(meetingID int) *ValueBool {
-	key, err := dskey.FromParts("meeting", meetingID, "motions_create_enable_additional_submitter_text")
-	if err != nil {
-		return &ValueBool{err: err}
-	}
-
-	return &ValueBool{fetch: r, key: key}
-}
-
 func (r *Fetch) Meeting_MotionsDefaultAmendmentWorkflowID(meetingID int) *ValueInt {
 	key, err := dskey.FromParts("meeting", meetingID, "motions_default_amendment_workflow_id")
 	if err != nil {
@@ -3601,6 +3547,15 @@ func (r *Fetch) Meeting_MotionsDefaultSorting(meetingID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
+func (r *Fetch) Meeting_MotionsDefaultStatuteAmendmentWorkflowID(meetingID int) *ValueInt {
+	key, err := dskey.FromParts("meeting", meetingID, "motions_default_statute_amendment_workflow_id")
+	if err != nil {
+		return &ValueInt{err: err}
+	}
+
+	return &ValueInt{fetch: r, key: key, required: true}
+}
+
 func (r *Fetch) Meeting_MotionsDefaultWorkflowID(meetingID int) *ValueInt {
 	key, err := dskey.FromParts("meeting", meetingID, "motions_default_workflow_id")
 	if err != nil {
@@ -3612,15 +3567,6 @@ func (r *Fetch) Meeting_MotionsDefaultWorkflowID(meetingID int) *ValueInt {
 
 func (r *Fetch) Meeting_MotionsEnableEditor(meetingID int) *ValueBool {
 	key, err := dskey.FromParts("meeting", meetingID, "motions_enable_editor")
-	if err != nil {
-		return &ValueBool{err: err}
-	}
-
-	return &ValueBool{fetch: r, key: key}
-}
-
-func (r *Fetch) Meeting_MotionsEnableOriginMotionDisplay(meetingID int) *ValueBool {
-	key, err := dskey.FromParts("meeting", meetingID, "motions_enable_origin_motion_display")
 	if err != nil {
 		return &ValueBool{err: err}
 	}
@@ -3709,15 +3655,6 @@ func (r *Fetch) Meeting_MotionsExportTitle(meetingID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
-func (r *Fetch) Meeting_MotionsHideMetadataBackground(meetingID int) *ValueBool {
-	key, err := dskey.FromParts("meeting", meetingID, "motions_hide_metadata_background")
-	if err != nil {
-		return &ValueBool{err: err}
-	}
-
-	return &ValueBool{fetch: r, key: key}
-}
-
 func (r *Fetch) Meeting_MotionsLineLength(meetingID int) *ValueInt {
 	key, err := dskey.FromParts("meeting", meetingID, "motions_line_length")
 	if err != nil {
@@ -3747,15 +3684,6 @@ func (r *Fetch) Meeting_MotionsNumberType(meetingID int) *ValueString {
 
 func (r *Fetch) Meeting_MotionsNumberWithBlank(meetingID int) *ValueBool {
 	key, err := dskey.FromParts("meeting", meetingID, "motions_number_with_blank")
-	if err != nil {
-		return &ValueBool{err: err}
-	}
-
-	return &ValueBool{fetch: r, key: key}
-}
-
-func (r *Fetch) Meeting_MotionsOriginMotionToggleDefault(meetingID int) *ValueBool {
-	key, err := dskey.FromParts("meeting", meetingID, "motions_origin_motion_toggle_default")
 	if err != nil {
 		return &ValueBool{err: err}
 	}
@@ -3810,6 +3738,24 @@ func (r *Fetch) Meeting_MotionsShowReferringMotions(meetingID int) *ValueBool {
 
 func (r *Fetch) Meeting_MotionsShowSequentialNumber(meetingID int) *ValueBool {
 	key, err := dskey.FromParts("meeting", meetingID, "motions_show_sequential_number")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
+}
+
+func (r *Fetch) Meeting_MotionsStatuteRecommendationsBy(meetingID int) *ValueString {
+	key, err := dskey.FromParts("meeting", meetingID, "motions_statute_recommendations_by")
+	if err != nil {
+		return &ValueString{err: err}
+	}
+
+	return &ValueString{fetch: r, key: key}
+}
+
+func (r *Fetch) Meeting_MotionsStatutesEnabled(meetingID int) *ValueBool {
+	key, err := dskey.FromParts("meeting", meetingID, "motions_statutes_enabled")
 	if err != nil {
 		return &ValueBool{err: err}
 	}
@@ -4336,7 +4282,7 @@ func (r *Fetch) MotionBlock_ID(motionBlockID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionBlock_Internal(motionBlockID int) *ValueBool {
@@ -4417,7 +4363,7 @@ func (r *Fetch) MotionCategory_ID(motionCategoryID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionCategory_Level(motionCategoryID int) *ValueInt {
@@ -4507,7 +4453,7 @@ func (r *Fetch) MotionChangeRecommendation_ID(motionChangeRecommendationID int) 
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionChangeRecommendation_Internal(motionChangeRecommendationID int) *ValueBool {
@@ -4606,7 +4552,7 @@ func (r *Fetch) MotionCommentSection_ID(motionCommentSectionID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionCommentSection_MeetingID(motionCommentSectionID int) *ValueInt {
@@ -4687,7 +4633,7 @@ func (r *Fetch) MotionComment_ID(motionCommentID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionComment_MeetingID(motionCommentID int) *ValueInt {
@@ -4723,7 +4669,7 @@ func (r *Fetch) MotionEditor_ID(motionEditorID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionEditor_MeetingID(motionEditorID int) *ValueInt {
@@ -4822,7 +4768,7 @@ func (r *Fetch) MotionState_ID(motionStateID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionState_IsInternal(motionStateID int) *ValueBool {
@@ -4987,13 +4933,76 @@ func (r *Fetch) MotionState_WorkflowID(motionStateID int) *ValueInt {
 	return &ValueInt{fetch: r, key: key, required: true}
 }
 
+func (r *Fetch) MotionStatuteParagraph_ID(motionStatuteParagraphID int) *ValueInt {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "id")
+	if err != nil {
+		return &ValueInt{err: err}
+	}
+
+	return &ValueInt{fetch: r, key: key}
+}
+
+func (r *Fetch) MotionStatuteParagraph_MeetingID(motionStatuteParagraphID int) *ValueInt {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "meeting_id")
+	if err != nil {
+		return &ValueInt{err: err}
+	}
+
+	return &ValueInt{fetch: r, key: key, required: true}
+}
+
+func (r *Fetch) MotionStatuteParagraph_MotionIDs(motionStatuteParagraphID int) *ValueIntSlice {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "motion_ids")
+	if err != nil {
+		return &ValueIntSlice{err: err}
+	}
+
+	return &ValueIntSlice{fetch: r, key: key}
+}
+
+func (r *Fetch) MotionStatuteParagraph_SequentialNumber(motionStatuteParagraphID int) *ValueInt {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "sequential_number")
+	if err != nil {
+		return &ValueInt{err: err}
+	}
+
+	return &ValueInt{fetch: r, key: key, required: true}
+}
+
+func (r *Fetch) MotionStatuteParagraph_Text(motionStatuteParagraphID int) *ValueString {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "text")
+	if err != nil {
+		return &ValueString{err: err}
+	}
+
+	return &ValueString{fetch: r, key: key}
+}
+
+func (r *Fetch) MotionStatuteParagraph_Title(motionStatuteParagraphID int) *ValueString {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "title")
+	if err != nil {
+		return &ValueString{err: err}
+	}
+
+	return &ValueString{fetch: r, key: key, required: true}
+}
+
+func (r *Fetch) MotionStatuteParagraph_Weight(motionStatuteParagraphID int) *ValueInt {
+	key, err := dskey.FromParts("motion_statute_paragraph", motionStatuteParagraphID, "weight")
+	if err != nil {
+		return &ValueInt{err: err}
+	}
+
+	return &ValueInt{fetch: r, key: key}
+}
+
 func (r *Fetch) MotionSubmitter_ID(motionSubmitterID int) *ValueInt {
 	key, err := dskey.FromParts("motion_submitter", motionSubmitterID, "id")
 	if err != nil {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionSubmitter_MeetingID(motionSubmitterID int) *ValueInt {
@@ -5041,6 +5050,15 @@ func (r *Fetch) MotionWorkflow_DefaultAmendmentWorkflowMeetingID(motionWorkflowI
 	return &ValueMaybeInt{fetch: r, key: key}
 }
 
+func (r *Fetch) MotionWorkflow_DefaultStatuteAmendmentWorkflowMeetingID(motionWorkflowID int) *ValueMaybeInt {
+	key, err := dskey.FromParts("motion_workflow", motionWorkflowID, "default_statute_amendment_workflow_meeting_id")
+	if err != nil {
+		return &ValueMaybeInt{err: err}
+	}
+
+	return &ValueMaybeInt{fetch: r, key: key}
+}
+
 func (r *Fetch) MotionWorkflow_DefaultWorkflowMeetingID(motionWorkflowID int) *ValueMaybeInt {
 	key, err := dskey.FromParts("motion_workflow", motionWorkflowID, "default_workflow_meeting_id")
 	if err != nil {
@@ -5065,7 +5083,7 @@ func (r *Fetch) MotionWorkflow_ID(motionWorkflowID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionWorkflow_MeetingID(motionWorkflowID int) *ValueInt {
@@ -5110,7 +5128,7 @@ func (r *Fetch) MotionWorkingGroupSpeaker_ID(motionWorkingGroupSpeakerID int) *V
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) MotionWorkingGroupSpeaker_MeetingID(motionWorkingGroupSpeakerID int) *ValueInt {
@@ -5299,7 +5317,7 @@ func (r *Fetch) Motion_ID(motionID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Motion_IDenticalMotionIDs(motionID int) *ValueIntSlice {
@@ -5554,6 +5572,15 @@ func (r *Fetch) Motion_StateID(motionID int) *ValueInt {
 	return &ValueInt{fetch: r, key: key, required: true}
 }
 
+func (r *Fetch) Motion_StatuteParagraphID(motionID int) *ValueMaybeInt {
+	key, err := dskey.FromParts("motion", motionID, "statute_paragraph_id")
+	if err != nil {
+		return &ValueMaybeInt{err: err}
+	}
+
+	return &ValueMaybeInt{fetch: r, key: key}
+}
+
 func (r *Fetch) Motion_SubmitterIDs(motionID int) *ValueIntSlice {
 	key, err := dskey.FromParts("motion", motionID, "submitter_ids")
 	if err != nil {
@@ -5650,7 +5677,7 @@ func (r *Fetch) Option_ID(optionID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Option_MeetingID(optionID int) *ValueInt {
@@ -5740,7 +5767,7 @@ func (r *Fetch) OrganizationTag_ID(organizationTagID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) OrganizationTag_Name(organizationTagID int) *ValueString {
@@ -5815,15 +5842,6 @@ func (r *Fetch) Organization_Description(organizationID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
-func (r *Fetch) Organization_EnableAnonymous(organizationID int) *ValueBool {
-	key, err := dskey.FromParts("organization", organizationID, "enable_anonymous")
-	if err != nil {
-		return &ValueBool{err: err}
-	}
-
-	return &ValueBool{fetch: r, key: key}
-}
-
 func (r *Fetch) Organization_EnableChat(organizationID int) *ValueBool {
 	key, err := dskey.FromParts("organization", organizationID, "enable_chat")
 	if err != nil {
@@ -5842,13 +5860,13 @@ func (r *Fetch) Organization_EnableElectronicVoting(organizationID int) *ValueBo
 	return &ValueBool{fetch: r, key: key}
 }
 
-func (r *Fetch) Organization_GenderIDs(organizationID int) *ValueIntSlice {
-	key, err := dskey.FromParts("organization", organizationID, "gender_ids")
+func (r *Fetch) Organization_Genders(organizationID int) *ValueStringSlice {
+	key, err := dskey.FromParts("organization", organizationID, "genders")
 	if err != nil {
-		return &ValueIntSlice{err: err}
+		return &ValueStringSlice{err: err}
 	}
 
-	return &ValueIntSlice{fetch: r, key: key}
+	return &ValueStringSlice{fetch: r, key: key}
 }
 
 func (r *Fetch) Organization_ID(organizationID int) *ValueInt {
@@ -5857,7 +5875,7 @@ func (r *Fetch) Organization_ID(organizationID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Organization_LegalNotice(organizationID int) *ValueString {
@@ -6118,7 +6136,7 @@ func (r *Fetch) PersonalNote_ID(personalNoteID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) PersonalNote_MeetingID(personalNoteID int) *ValueInt {
@@ -6163,7 +6181,7 @@ func (r *Fetch) PointOfOrderCategory_ID(pointOfOrderCategoryID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) PointOfOrderCategory_MeetingID(pointOfOrderCategoryID int) *ValueInt {
@@ -6208,7 +6226,7 @@ func (r *Fetch) PollCandidateList_ID(pollCandidateListID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) PollCandidateList_MeetingID(pollCandidateListID int) *ValueInt {
@@ -6244,7 +6262,7 @@ func (r *Fetch) PollCandidate_ID(pollCandidateID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) PollCandidate_MeetingID(pollCandidateID int) *ValueInt {
@@ -6382,22 +6400,13 @@ func (r *Fetch) Poll_GlobalYes(pollID int) *ValueBool {
 	return &ValueBool{fetch: r, key: key}
 }
 
-func (r *Fetch) Poll_HasVotedUserIDs(pollID int) *ValueIntSlice {
-	key, err := dskey.FromParts("poll", pollID, "has_voted_user_ids")
-	if err != nil {
-		return &ValueIntSlice{err: err}
-	}
-
-	return &ValueIntSlice{fetch: r, key: key}
-}
-
 func (r *Fetch) Poll_ID(pollID int) *ValueInt {
 	key, err := dskey.FromParts("poll", pollID, "id")
 	if err != nil {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Poll_IsPseudoanonymized(pollID int) *ValueBool {
@@ -6517,6 +6526,15 @@ func (r *Fetch) Poll_Type(pollID int) *ValueString {
 	return &ValueString{fetch: r, key: key, required: true}
 }
 
+func (r *Fetch) Poll_VoteCount(pollID int) *ValueInt {
+	key, err := dskey.FromParts("poll", pollID, "vote_count")
+	if err != nil {
+		return &ValueInt{err: err}
+	}
+
+	return &ValueInt{fetch: r, key: key}
+}
+
 func (r *Fetch) Poll_VotedIDs(pollID int) *ValueIntSlice {
 	key, err := dskey.FromParts("poll", pollID, "voted_ids")
 	if err != nil {
@@ -6613,7 +6631,7 @@ func (r *Fetch) Projection_ID(projectionID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Projection_MeetingID(projectionID int) *ValueInt {
@@ -6703,7 +6721,7 @@ func (r *Fetch) ProjectorCountdown_ID(projectorCountdownID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ProjectorCountdown_MeetingID(projectorCountdownID int) *ValueInt {
@@ -6766,7 +6784,7 @@ func (r *Fetch) ProjectorMessage_ID(projectorMessageID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) ProjectorMessage_MeetingID(projectorMessageID int) *ValueInt {
@@ -6919,7 +6937,7 @@ func (r *Fetch) Projector_ID(projectorID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Projector_IsInternal(projectorID int) *ValueBool {
@@ -7189,7 +7207,7 @@ func (r *Fetch) Speaker_ID(speakerID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Speaker_ListOfSpeakersID(speakerID int) *ValueInt {
@@ -7450,7 +7468,7 @@ func (r *Fetch) Tag_ID(tagID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Tag_MeetingID(tagID int) *ValueInt {
@@ -7954,7 +7972,7 @@ func (r *Fetch) Topic_ID(topicID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Topic_ListOfSpeakersID(topicID int) *ValueInt {
@@ -8092,13 +8110,22 @@ func (r *Fetch) User_FirstName(userID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
-func (r *Fetch) User_GenderID(userID int) *ValueMaybeInt {
-	key, err := dskey.FromParts("user", userID, "gender_id")
+func (r *Fetch) User_ForwardingCommitteeIDs(userID int) *ValueIntSlice {
+	key, err := dskey.FromParts("user", userID, "forwarding_committee_ids")
 	if err != nil {
-		return &ValueMaybeInt{err: err}
+		return &ValueIntSlice{err: err}
 	}
 
-	return &ValueMaybeInt{fetch: r, key: key}
+	return &ValueIntSlice{fetch: r, key: key}
+}
+
+func (r *Fetch) User_Gender(userID int) *ValueString {
+	key, err := dskey.FromParts("user", userID, "gender")
+	if err != nil {
+		return &ValueString{err: err}
+	}
+
+	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) User_ID(userID int) *ValueInt {
@@ -8107,7 +8134,7 @@ func (r *Fetch) User_ID(userID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) User_IsActive(userID int) *ValueBool {
@@ -8314,7 +8341,7 @@ func (r *Fetch) Vote_ID(voteID int) *ValueInt {
 		return &ValueInt{err: err}
 	}
 
-	return &ValueInt{fetch: r, key: key, required: true}
+	return &ValueInt{fetch: r, key: key}
 }
 
 func (r *Fetch) Vote_MeetingID(voteID int) *ValueInt {
@@ -8379,7 +8406,6 @@ type ActionWorker struct {
 	Result    json.RawMessage
 	State     string
 	Timestamp int
-	UserID    int
 	fetch     *Fetch
 }
 
@@ -8391,7 +8417,6 @@ func (c *ActionWorker) lazy(ds *Fetch, id int) {
 	ds.ActionWorker_Result(id).Lazy(&c.Result)
 	ds.ActionWorker_State(id).Lazy(&c.State)
 	ds.ActionWorker_Timestamp(id).Lazy(&c.Timestamp)
-	ds.ActionWorker_UserID(id).Lazy(&c.UserID)
 }
 
 func (r *Fetch) ActionWorker(id int) *ValueCollection[ActionWorker, *ActionWorker] {
@@ -8414,6 +8439,7 @@ type AgendaItem struct {
 	ItemNumber      string
 	Level           int
 	MeetingID       int
+	ModeratorNotes  string
 	ParentID        Maybe[int]
 	ProjectionIDs   []int
 	TagIDs          []int
@@ -8435,6 +8461,7 @@ func (c *AgendaItem) lazy(ds *Fetch, id int) {
 	ds.AgendaItem_ItemNumber(id).Lazy(&c.ItemNumber)
 	ds.AgendaItem_Level(id).Lazy(&c.Level)
 	ds.AgendaItem_MeetingID(id).Lazy(&c.MeetingID)
+	ds.AgendaItem_ModeratorNotes(id).Lazy(&c.ModeratorNotes)
 	ds.AgendaItem_ParentID(id).Lazy(&c.ParentID)
 	ds.AgendaItem_ProjectionIDs(id).Lazy(&c.ProjectionIDs)
 	ds.AgendaItem_TagIDs(id).Lazy(&c.TagIDs)
@@ -8820,6 +8847,7 @@ type Committee struct {
 	Description                        string
 	ExternalID                         string
 	ForwardToCommitteeIDs              []int
+	ForwardingUserID                   Maybe[int]
 	ID                                 int
 	ManagerIDs                         []int
 	MeetingIDs                         []int
@@ -8837,6 +8865,7 @@ func (c *Committee) lazy(ds *Fetch, id int) {
 	ds.Committee_Description(id).Lazy(&c.Description)
 	ds.Committee_ExternalID(id).Lazy(&c.ExternalID)
 	ds.Committee_ForwardToCommitteeIDs(id).Lazy(&c.ForwardToCommitteeIDs)
+	ds.Committee_ForwardingUserID(id).Lazy(&c.ForwardingUserID)
 	ds.Committee_ID(id).Lazy(&c.ID)
 	ds.Committee_ManagerIDs(id).Lazy(&c.ManagerIDs)
 	ds.Committee_MeetingIDs(id).Lazy(&c.MeetingIDs)
@@ -8869,6 +8898,20 @@ func (c *Committee) ForwardToCommitteeList() []*ValueCollection[Committee, *Comm
 			fetch: c.fetch,
 		}
 	}
+	return result
+}
+
+func (c *Committee) ForwardingUser() Maybe[*ValueCollection[User, *User]] {
+	var result Maybe[*ValueCollection[User, *User]]
+	id, hasValue := c.ForwardingUserID.Value()
+	if !hasValue {
+		return result
+	}
+	value := &ValueCollection[User, *User]{
+		id:    id,
+		fetch: c.fetch,
+	}
+	result.Set(value)
 	return result
 }
 
@@ -8936,48 +8979,6 @@ func (c *Committee) UserList() []*ValueCollection[User, *User] {
 
 func (r *Fetch) Committee(id int) *ValueCollection[Committee, *Committee] {
 	return &ValueCollection[Committee, *Committee]{
-		id:    id,
-		fetch: r,
-	}
-}
-
-// Gender has all fields from gender.
-type Gender struct {
-	ID             int
-	Name           string
-	OrganizationID int
-	UserIDs        []int
-	fetch          *Fetch
-}
-
-func (c *Gender) lazy(ds *Fetch, id int) {
-	c.fetch = ds
-	ds.Gender_ID(id).Lazy(&c.ID)
-	ds.Gender_Name(id).Lazy(&c.Name)
-	ds.Gender_OrganizationID(id).Lazy(&c.OrganizationID)
-	ds.Gender_UserIDs(id).Lazy(&c.UserIDs)
-}
-
-func (c *Gender) Organization() *ValueCollection[Organization, *Organization] {
-	return &ValueCollection[Organization, *Organization]{
-		id:    c.OrganizationID,
-		fetch: c.fetch,
-	}
-}
-
-func (c *Gender) UserList() []*ValueCollection[User, *User] {
-	result := make([]*ValueCollection[User, *User], len(c.UserIDs))
-	for i, id := range c.UserIDs {
-		result[i] = &ValueCollection[User, *User]{
-			id:    id,
-			fetch: c.fetch,
-		}
-	}
-	return result
-}
-
-func (r *Fetch) Gender(id int) *ValueCollection[Gender, *Gender] {
-	return &ValueCollection[Gender, *Gender]{
 		id:    id,
 		fetch: r,
 	}
@@ -9266,7 +9267,6 @@ type ListOfSpeakers struct {
 	ContentObjectID                 string
 	ID                              int
 	MeetingID                       int
-	ModeratorNotes                  string
 	ProjectionIDs                   []int
 	SequentialNumber                int
 	SpeakerIDs                      []int
@@ -9280,7 +9280,6 @@ func (c *ListOfSpeakers) lazy(ds *Fetch, id int) {
 	ds.ListOfSpeakers_ContentObjectID(id).Lazy(&c.ContentObjectID)
 	ds.ListOfSpeakers_ID(id).Lazy(&c.ID)
 	ds.ListOfSpeakers_MeetingID(id).Lazy(&c.MeetingID)
-	ds.ListOfSpeakers_ModeratorNotes(id).Lazy(&c.ModeratorNotes)
 	ds.ListOfSpeakers_ProjectionIDs(id).Lazy(&c.ProjectionIDs)
 	ds.ListOfSpeakers_SequentialNumber(id).Lazy(&c.SequentialNumber)
 	ds.ListOfSpeakers_SpeakerIDs(id).Lazy(&c.SpeakerIDs)
@@ -9572,9 +9571,8 @@ type Meeting struct {
 	MotionPollDefaultMethod                      string
 	MotionPollDefaultOnehundredPercentBase       string
 	MotionPollDefaultType                        string
-	MotionPollProjectionMaxColumns               int
-	MotionPollProjectionNameOrderFirst           string
 	MotionStateIDs                               []int
+	MotionStatuteParagraphIDs                    []int
 	MotionSubmitterIDs                           []int
 	MotionWorkflowIDs                            []int
 	MotionWorkingGroupSpeakerIDs                 []int
@@ -9585,13 +9583,12 @@ type Meeting struct {
 	MotionsAmendmentsPrefix                      string
 	MotionsAmendmentsTextMode                    string
 	MotionsBlockSlideColumns                     int
-	MotionsCreateEnableAdditionalSubmitterText   bool
 	MotionsDefaultAmendmentWorkflowID            int
 	MotionsDefaultLineNumbering                  string
 	MotionsDefaultSorting                        string
+	MotionsDefaultStatuteAmendmentWorkflowID     int
 	MotionsDefaultWorkflowID                     int
 	MotionsEnableEditor                          bool
-	MotionsEnableOriginMotionDisplay             bool
 	MotionsEnableReasonOnProjector               bool
 	MotionsEnableRecommendationOnProjector       bool
 	MotionsEnableSideboxOnProjector              bool
@@ -9601,18 +9598,18 @@ type Meeting struct {
 	MotionsExportPreamble                        string
 	MotionsExportSubmitterRecommendation         bool
 	MotionsExportTitle                           string
-	MotionsHideMetadataBackground                bool
 	MotionsLineLength                            int
 	MotionsNumberMinDigits                       int
 	MotionsNumberType                            string
 	MotionsNumberWithBlank                       bool
-	MotionsOriginMotionToggleDefault             bool
 	MotionsPreamble                              string
 	MotionsReasonRequired                        bool
 	MotionsRecommendationTextMode                string
 	MotionsRecommendationsBy                     string
 	MotionsShowReferringMotions                  bool
 	MotionsShowSequentialNumber                  bool
+	MotionsStatuteRecommendationsBy              string
+	MotionsStatutesEnabled                       bool
 	MotionsSupportersMinAmount                   int
 	Name                                         string
 	OptionIDs                                    []int
@@ -9816,9 +9813,8 @@ func (c *Meeting) lazy(ds *Fetch, id int) {
 	ds.Meeting_MotionPollDefaultMethod(id).Lazy(&c.MotionPollDefaultMethod)
 	ds.Meeting_MotionPollDefaultOnehundredPercentBase(id).Lazy(&c.MotionPollDefaultOnehundredPercentBase)
 	ds.Meeting_MotionPollDefaultType(id).Lazy(&c.MotionPollDefaultType)
-	ds.Meeting_MotionPollProjectionMaxColumns(id).Lazy(&c.MotionPollProjectionMaxColumns)
-	ds.Meeting_MotionPollProjectionNameOrderFirst(id).Lazy(&c.MotionPollProjectionNameOrderFirst)
 	ds.Meeting_MotionStateIDs(id).Lazy(&c.MotionStateIDs)
+	ds.Meeting_MotionStatuteParagraphIDs(id).Lazy(&c.MotionStatuteParagraphIDs)
 	ds.Meeting_MotionSubmitterIDs(id).Lazy(&c.MotionSubmitterIDs)
 	ds.Meeting_MotionWorkflowIDs(id).Lazy(&c.MotionWorkflowIDs)
 	ds.Meeting_MotionWorkingGroupSpeakerIDs(id).Lazy(&c.MotionWorkingGroupSpeakerIDs)
@@ -9829,13 +9825,12 @@ func (c *Meeting) lazy(ds *Fetch, id int) {
 	ds.Meeting_MotionsAmendmentsPrefix(id).Lazy(&c.MotionsAmendmentsPrefix)
 	ds.Meeting_MotionsAmendmentsTextMode(id).Lazy(&c.MotionsAmendmentsTextMode)
 	ds.Meeting_MotionsBlockSlideColumns(id).Lazy(&c.MotionsBlockSlideColumns)
-	ds.Meeting_MotionsCreateEnableAdditionalSubmitterText(id).Lazy(&c.MotionsCreateEnableAdditionalSubmitterText)
 	ds.Meeting_MotionsDefaultAmendmentWorkflowID(id).Lazy(&c.MotionsDefaultAmendmentWorkflowID)
 	ds.Meeting_MotionsDefaultLineNumbering(id).Lazy(&c.MotionsDefaultLineNumbering)
 	ds.Meeting_MotionsDefaultSorting(id).Lazy(&c.MotionsDefaultSorting)
+	ds.Meeting_MotionsDefaultStatuteAmendmentWorkflowID(id).Lazy(&c.MotionsDefaultStatuteAmendmentWorkflowID)
 	ds.Meeting_MotionsDefaultWorkflowID(id).Lazy(&c.MotionsDefaultWorkflowID)
 	ds.Meeting_MotionsEnableEditor(id).Lazy(&c.MotionsEnableEditor)
-	ds.Meeting_MotionsEnableOriginMotionDisplay(id).Lazy(&c.MotionsEnableOriginMotionDisplay)
 	ds.Meeting_MotionsEnableReasonOnProjector(id).Lazy(&c.MotionsEnableReasonOnProjector)
 	ds.Meeting_MotionsEnableRecommendationOnProjector(id).Lazy(&c.MotionsEnableRecommendationOnProjector)
 	ds.Meeting_MotionsEnableSideboxOnProjector(id).Lazy(&c.MotionsEnableSideboxOnProjector)
@@ -9845,18 +9840,18 @@ func (c *Meeting) lazy(ds *Fetch, id int) {
 	ds.Meeting_MotionsExportPreamble(id).Lazy(&c.MotionsExportPreamble)
 	ds.Meeting_MotionsExportSubmitterRecommendation(id).Lazy(&c.MotionsExportSubmitterRecommendation)
 	ds.Meeting_MotionsExportTitle(id).Lazy(&c.MotionsExportTitle)
-	ds.Meeting_MotionsHideMetadataBackground(id).Lazy(&c.MotionsHideMetadataBackground)
 	ds.Meeting_MotionsLineLength(id).Lazy(&c.MotionsLineLength)
 	ds.Meeting_MotionsNumberMinDigits(id).Lazy(&c.MotionsNumberMinDigits)
 	ds.Meeting_MotionsNumberType(id).Lazy(&c.MotionsNumberType)
 	ds.Meeting_MotionsNumberWithBlank(id).Lazy(&c.MotionsNumberWithBlank)
-	ds.Meeting_MotionsOriginMotionToggleDefault(id).Lazy(&c.MotionsOriginMotionToggleDefault)
 	ds.Meeting_MotionsPreamble(id).Lazy(&c.MotionsPreamble)
 	ds.Meeting_MotionsReasonRequired(id).Lazy(&c.MotionsReasonRequired)
 	ds.Meeting_MotionsRecommendationTextMode(id).Lazy(&c.MotionsRecommendationTextMode)
 	ds.Meeting_MotionsRecommendationsBy(id).Lazy(&c.MotionsRecommendationsBy)
 	ds.Meeting_MotionsShowReferringMotions(id).Lazy(&c.MotionsShowReferringMotions)
 	ds.Meeting_MotionsShowSequentialNumber(id).Lazy(&c.MotionsShowSequentialNumber)
+	ds.Meeting_MotionsStatuteRecommendationsBy(id).Lazy(&c.MotionsStatuteRecommendationsBy)
+	ds.Meeting_MotionsStatutesEnabled(id).Lazy(&c.MotionsStatutesEnabled)
 	ds.Meeting_MotionsSupportersMinAmount(id).Lazy(&c.MotionsSupportersMinAmount)
 	ds.Meeting_Name(id).Lazy(&c.Name)
 	ds.Meeting_OptionIDs(id).Lazy(&c.OptionIDs)
@@ -10633,6 +10628,17 @@ func (c *Meeting) MotionStateList() []*ValueCollection[MotionState, *MotionState
 	return result
 }
 
+func (c *Meeting) MotionStatuteParagraphList() []*ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph] {
+	result := make([]*ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph], len(c.MotionStatuteParagraphIDs))
+	for i, id := range c.MotionStatuteParagraphIDs {
+		result[i] = &ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph]{
+			id:    id,
+			fetch: c.fetch,
+		}
+	}
+	return result
+}
+
 func (c *Meeting) MotionSubmitterList() []*ValueCollection[MotionSubmitter, *MotionSubmitter] {
 	result := make([]*ValueCollection[MotionSubmitter, *MotionSubmitter], len(c.MotionSubmitterIDs))
 	for i, id := range c.MotionSubmitterIDs {
@@ -10669,6 +10675,13 @@ func (c *Meeting) MotionWorkingGroupSpeakerList() []*ValueCollection[MotionWorki
 func (c *Meeting) MotionsDefaultAmendmentWorkflow() *ValueCollection[MotionWorkflow, *MotionWorkflow] {
 	return &ValueCollection[MotionWorkflow, *MotionWorkflow]{
 		id:    c.MotionsDefaultAmendmentWorkflowID,
+		fetch: c.fetch,
+	}
+}
+
+func (c *Meeting) MotionsDefaultStatuteAmendmentWorkflow() *ValueCollection[MotionWorkflow, *MotionWorkflow] {
+	return &ValueCollection[MotionWorkflow, *MotionWorkflow]{
+		id:    c.MotionsDefaultStatuteAmendmentWorkflowID,
 		fetch: c.fetch,
 	}
 }
@@ -11545,6 +11558,7 @@ type Motion struct {
 	StateExtension                               string
 	StateExtensionReferenceIDs                   []string
 	StateID                                      int
+	StatuteParagraphID                           Maybe[int]
 	SubmitterIDs                                 []int
 	SupporterMeetingUserIDs                      []int
 	TagIDs                                       []int
@@ -11603,6 +11617,7 @@ func (c *Motion) lazy(ds *Fetch, id int) {
 	ds.Motion_StateExtension(id).Lazy(&c.StateExtension)
 	ds.Motion_StateExtensionReferenceIDs(id).Lazy(&c.StateExtensionReferenceIDs)
 	ds.Motion_StateID(id).Lazy(&c.StateID)
+	ds.Motion_StatuteParagraphID(id).Lazy(&c.StatuteParagraphID)
 	ds.Motion_SubmitterIDs(id).Lazy(&c.SubmitterIDs)
 	ds.Motion_SupporterMeetingUserIDs(id).Lazy(&c.SupporterMeetingUserIDs)
 	ds.Motion_TagIDs(id).Lazy(&c.TagIDs)
@@ -11920,6 +11935,20 @@ func (c *Motion) State() *ValueCollection[MotionState, *MotionState] {
 		id:    c.StateID,
 		fetch: c.fetch,
 	}
+}
+
+func (c *Motion) StatuteParagraph() Maybe[*ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph]] {
+	var result Maybe[*ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph]]
+	id, hasValue := c.StatuteParagraphID.Value()
+	if !hasValue {
+		return result
+	}
+	value := &ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph]{
+		id:    id,
+		fetch: c.fetch,
+	}
+	result.Set(value)
+	return result
 }
 
 func (c *Motion) SubmitterList() []*ValueCollection[MotionSubmitter, *MotionSubmitter] {
@@ -12519,6 +12548,54 @@ func (r *Fetch) MotionState(id int) *ValueCollection[MotionState, *MotionState] 
 	}
 }
 
+// MotionStatuteParagraph has all fields from motion_statute_paragraph.
+type MotionStatuteParagraph struct {
+	ID               int
+	MeetingID        int
+	MotionIDs        []int
+	SequentialNumber int
+	Text             string
+	Title            string
+	Weight           int
+	fetch            *Fetch
+}
+
+func (c *MotionStatuteParagraph) lazy(ds *Fetch, id int) {
+	c.fetch = ds
+	ds.MotionStatuteParagraph_ID(id).Lazy(&c.ID)
+	ds.MotionStatuteParagraph_MeetingID(id).Lazy(&c.MeetingID)
+	ds.MotionStatuteParagraph_MotionIDs(id).Lazy(&c.MotionIDs)
+	ds.MotionStatuteParagraph_SequentialNumber(id).Lazy(&c.SequentialNumber)
+	ds.MotionStatuteParagraph_Text(id).Lazy(&c.Text)
+	ds.MotionStatuteParagraph_Title(id).Lazy(&c.Title)
+	ds.MotionStatuteParagraph_Weight(id).Lazy(&c.Weight)
+}
+
+func (c *MotionStatuteParagraph) Meeting() *ValueCollection[Meeting, *Meeting] {
+	return &ValueCollection[Meeting, *Meeting]{
+		id:    c.MeetingID,
+		fetch: c.fetch,
+	}
+}
+
+func (c *MotionStatuteParagraph) MotionList() []*ValueCollection[Motion, *Motion] {
+	result := make([]*ValueCollection[Motion, *Motion], len(c.MotionIDs))
+	for i, id := range c.MotionIDs {
+		result[i] = &ValueCollection[Motion, *Motion]{
+			id:    id,
+			fetch: c.fetch,
+		}
+	}
+	return result
+}
+
+func (r *Fetch) MotionStatuteParagraph(id int) *ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph] {
+	return &ValueCollection[MotionStatuteParagraph, *MotionStatuteParagraph]{
+		id:    id,
+		fetch: r,
+	}
+}
+
 // MotionSubmitter has all fields from motion_submitter.
 type MotionSubmitter struct {
 	ID            int
@@ -12568,20 +12645,22 @@ func (r *Fetch) MotionSubmitter(id int) *ValueCollection[MotionSubmitter, *Motio
 
 // MotionWorkflow has all fields from motion_workflow.
 type MotionWorkflow struct {
-	DefaultAmendmentWorkflowMeetingID Maybe[int]
-	DefaultWorkflowMeetingID          Maybe[int]
-	FirstStateID                      int
-	ID                                int
-	MeetingID                         int
-	Name                              string
-	SequentialNumber                  int
-	StateIDs                          []int
-	fetch                             *Fetch
+	DefaultAmendmentWorkflowMeetingID        Maybe[int]
+	DefaultStatuteAmendmentWorkflowMeetingID Maybe[int]
+	DefaultWorkflowMeetingID                 Maybe[int]
+	FirstStateID                             int
+	ID                                       int
+	MeetingID                                int
+	Name                                     string
+	SequentialNumber                         int
+	StateIDs                                 []int
+	fetch                                    *Fetch
 }
 
 func (c *MotionWorkflow) lazy(ds *Fetch, id int) {
 	c.fetch = ds
 	ds.MotionWorkflow_DefaultAmendmentWorkflowMeetingID(id).Lazy(&c.DefaultAmendmentWorkflowMeetingID)
+	ds.MotionWorkflow_DefaultStatuteAmendmentWorkflowMeetingID(id).Lazy(&c.DefaultStatuteAmendmentWorkflowMeetingID)
 	ds.MotionWorkflow_DefaultWorkflowMeetingID(id).Lazy(&c.DefaultWorkflowMeetingID)
 	ds.MotionWorkflow_FirstStateID(id).Lazy(&c.FirstStateID)
 	ds.MotionWorkflow_ID(id).Lazy(&c.ID)
@@ -12594,6 +12673,20 @@ func (c *MotionWorkflow) lazy(ds *Fetch, id int) {
 func (c *MotionWorkflow) DefaultAmendmentWorkflowMeeting() Maybe[*ValueCollection[Meeting, *Meeting]] {
 	var result Maybe[*ValueCollection[Meeting, *Meeting]]
 	id, hasValue := c.DefaultAmendmentWorkflowMeetingID.Value()
+	if !hasValue {
+		return result
+	}
+	value := &ValueCollection[Meeting, *Meeting]{
+		id:    id,
+		fetch: c.fetch,
+	}
+	result.Set(value)
+	return result
+}
+
+func (c *MotionWorkflow) DefaultStatuteAmendmentWorkflowMeeting() Maybe[*ValueCollection[Meeting, *Meeting]] {
+	var result Maybe[*ValueCollection[Meeting, *Meeting]]
+	id, hasValue := c.DefaultStatuteAmendmentWorkflowMeetingID.Value()
 	if !hasValue {
 		return result
 	}
@@ -12789,10 +12882,9 @@ type Organization struct {
 	CommitteeIDs               []int
 	DefaultLanguage            string
 	Description                string
-	EnableAnonymous            bool
 	EnableChat                 bool
 	EnableElectronicVoting     bool
-	GenderIDs                  []int
+	Genders                    []string
 	ID                         int
 	LegalNotice                string
 	LimitOfMeetings            int
@@ -12831,10 +12923,9 @@ func (c *Organization) lazy(ds *Fetch, id int) {
 	ds.Organization_CommitteeIDs(id).Lazy(&c.CommitteeIDs)
 	ds.Organization_DefaultLanguage(id).Lazy(&c.DefaultLanguage)
 	ds.Organization_Description(id).Lazy(&c.Description)
-	ds.Organization_EnableAnonymous(id).Lazy(&c.EnableAnonymous)
 	ds.Organization_EnableChat(id).Lazy(&c.EnableChat)
 	ds.Organization_EnableElectronicVoting(id).Lazy(&c.EnableElectronicVoting)
-	ds.Organization_GenderIDs(id).Lazy(&c.GenderIDs)
+	ds.Organization_Genders(id).Lazy(&c.Genders)
 	ds.Organization_ID(id).Lazy(&c.ID)
 	ds.Organization_LegalNotice(id).Lazy(&c.LegalNotice)
 	ds.Organization_LimitOfMeetings(id).Lazy(&c.LimitOfMeetings)
@@ -12891,17 +12982,6 @@ func (c *Organization) CommitteeList() []*ValueCollection[Committee, *Committee]
 	result := make([]*ValueCollection[Committee, *Committee], len(c.CommitteeIDs))
 	for i, id := range c.CommitteeIDs {
 		result[i] = &ValueCollection[Committee, *Committee]{
-			id:    id,
-			fetch: c.fetch,
-		}
-	}
-	return result
-}
-
-func (c *Organization) GenderList() []*ValueCollection[Gender, *Gender] {
-	result := make([]*ValueCollection[Gender, *Gender], len(c.GenderIDs))
-	for i, id := range c.GenderIDs {
-		result[i] = &ValueCollection[Gender, *Gender]{
 			id:    id,
 			fetch: c.fetch,
 		}
@@ -13121,7 +13201,6 @@ type Poll struct {
 	GlobalNo              bool
 	GlobalOptionID        Maybe[int]
 	GlobalYes             bool
-	HasVotedUserIDs       []int
 	ID                    int
 	IsPseudoanonymized    bool
 	MaxVotesAmount        int
@@ -13136,6 +13215,7 @@ type Poll struct {
 	State                 string
 	Title                 string
 	Type                  string
+	VoteCount             int
 	VotedIDs              []int
 	VotesRaw              string
 	VotesSignature        string
@@ -13158,7 +13238,6 @@ func (c *Poll) lazy(ds *Fetch, id int) {
 	ds.Poll_GlobalNo(id).Lazy(&c.GlobalNo)
 	ds.Poll_GlobalOptionID(id).Lazy(&c.GlobalOptionID)
 	ds.Poll_GlobalYes(id).Lazy(&c.GlobalYes)
-	ds.Poll_HasVotedUserIDs(id).Lazy(&c.HasVotedUserIDs)
 	ds.Poll_ID(id).Lazy(&c.ID)
 	ds.Poll_IsPseudoanonymized(id).Lazy(&c.IsPseudoanonymized)
 	ds.Poll_MaxVotesAmount(id).Lazy(&c.MaxVotesAmount)
@@ -13173,6 +13252,7 @@ func (c *Poll) lazy(ds *Fetch, id int) {
 	ds.Poll_State(id).Lazy(&c.State)
 	ds.Poll_Title(id).Lazy(&c.Title)
 	ds.Poll_Type(id).Lazy(&c.Type)
+	ds.Poll_VoteCount(id).Lazy(&c.VoteCount)
 	ds.Poll_VotedIDs(id).Lazy(&c.VotedIDs)
 	ds.Poll_VotesRaw(id).Lazy(&c.VotesRaw)
 	ds.Poll_VotesSignature(id).Lazy(&c.VotesSignature)
@@ -14410,7 +14490,8 @@ type User struct {
 	DelegatedVoteIDs            []int
 	Email                       string
 	FirstName                   string
-	GenderID                    Maybe[int]
+	ForwardingCommitteeIDs      []int
+	Gender                      string
 	ID                          int
 	IsActive                    bool
 	IsDemoUser                  bool
@@ -14446,7 +14527,8 @@ func (c *User) lazy(ds *Fetch, id int) {
 	ds.User_DelegatedVoteIDs(id).Lazy(&c.DelegatedVoteIDs)
 	ds.User_Email(id).Lazy(&c.Email)
 	ds.User_FirstName(id).Lazy(&c.FirstName)
-	ds.User_GenderID(id).Lazy(&c.GenderID)
+	ds.User_ForwardingCommitteeIDs(id).Lazy(&c.ForwardingCommitteeIDs)
+	ds.User_Gender(id).Lazy(&c.Gender)
 	ds.User_ID(id).Lazy(&c.ID)
 	ds.User_IsActive(id).Lazy(&c.IsActive)
 	ds.User_IsDemoUser(id).Lazy(&c.IsDemoUser)
@@ -14504,17 +14586,14 @@ func (c *User) DelegatedVoteList() []*ValueCollection[Vote, *Vote] {
 	return result
 }
 
-func (c *User) Gender() Maybe[*ValueCollection[Gender, *Gender]] {
-	var result Maybe[*ValueCollection[Gender, *Gender]]
-	id, hasValue := c.GenderID.Value()
-	if !hasValue {
-		return result
+func (c *User) ForwardingCommitteeList() []*ValueCollection[Committee, *Committee] {
+	result := make([]*ValueCollection[Committee, *Committee], len(c.ForwardingCommitteeIDs))
+	for i, id := range c.ForwardingCommitteeIDs {
+		result[i] = &ValueCollection[Committee, *Committee]{
+			id:    id,
+			fetch: c.fetch,
+		}
 	}
-	value := &ValueCollection[Gender, *Gender]{
-		id:    id,
-		fetch: c.fetch,
-	}
-	result.Set(value)
 	return result
 }
 

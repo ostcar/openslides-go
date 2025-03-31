@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -15,8 +15,6 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-const maxFieldsOnQuery = 1_500
 
 var (
 	envPostgresHost         = environment.NewVariable("DATABASE_HOST", "localhost", "Postgres Host.")
@@ -78,74 +76,74 @@ func NewFlowPostgres(lookup environment.Environmenter, updater flow.Updater) (*F
 
 // Get fetches the keys from postgres.
 func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
-	uniqueFieldsStr, fieldIndex, uniqueFQID := prepareQuery(keys)
+	collectionIDs := make(map[string][]int)
+	for _, key := range keys {
+		if slices.Contains(collectionIDs[key.Collection()], key.ID()) {
+			continue
+		}
 
-	// For very big SQL Queries, split them in part
-	if len(fieldIndex) > maxFieldsOnQuery {
-		keysList := splitFieldKeys(keys)
-		result := make(map[dskey.Key][]byte, len(keys))
-		for _, keys := range keysList {
-			resultPart, err := p.Get(ctx, keys...)
+		collectionIDs[key.Collection()] = append(collectionIDs[key.Collection()], key.ID())
+	}
+
+	result := make(map[dskey.Key][]byte, len(keys))
+	for collection, ids := range collectionIDs {
+		collectionTableName := collection
+		if collectionTableName == "user" || collectionTableName == "group" {
+			collectionTableName += "_"
+		}
+
+		sql := fmt.Sprintf(`SELECT * FROM %s WHERE id = ANY ($1) `, collectionTableName)
+
+		rows, err := p.pool.Query(ctx, sql, ids)
+		if err != nil {
+			return nil, fmt.Errorf("sending query for %s: %w", collection, err)
+		}
+		defer rows.Close()
+
+		err = forEachRow(rows, func(row pgx.CollectableRow) error {
+			// TODO: Instead of using row.Values, it would be nicer, if I could
+			// use RawValues or skip .Values all together.
+			values, err := row.Values()
 			if err != nil {
-				return nil, fmt.Errorf("get key list: %w", err)
+				return fmt.Errorf("get values: %w", err)
 			}
 
-			for k, v := range resultPart {
-				result[k] = v
+			// TODO: This expects the first field to be the id.
+			id32, ok := values[0].(int32)
+			if !ok {
+				return fmt.Errorf("invalid id: %v, %T", values[0], values[0])
 			}
-		}
-		return result, nil
-	}
 
-	sql := fmt.Sprintf(`SELECT fqid, %s from models where fqid = ANY ($1) AND deleted=false;`, uniqueFieldsStr)
+			id := int(id32)
 
-	rows, err := p.pool.Query(ctx, sql, uniqueFQID)
-	if err != nil {
-		return nil, fmt.Errorf("sending query: %w", err)
-	}
-	defer rows.Close()
+			for i, value := range values {
+				field := row.FieldDescriptions()[i].Name
+				key, err := dskey.FromParts(collection, id, field)
+				if err != nil {
+					return fmt.Errorf("invalid key on field %d: %w", i, err)
+				}
 
-	table := make(map[string][][]byte)
-	for rows.Next() {
-		r := rows.RawValues()
-		copied := make([][]byte, len(r)-1)
-		for i := 1; i < len(r); i++ {
-			copied[i-1] = r[i]
-			if r[i] == nil {
-				continue
+				bytes, err := json.Marshal(value)
+				if err != nil {
+					return fmt.Errorf("converting field %d to json: %w", i, err)
+				}
+
+				result[key] = bytes
 			}
-			copied[i-1] = make([]byte, len(r[i]))
-			copy(copied[i-1], r[i])
+
+			return nil
+
+		})
+		if err != nil {
+			return nil, fmt.Errorf("parse collection %s: %w", collection, err)
 		}
-		table[string(r[0])] = copied
 	}
 
-	if rows.Err() != nil {
-		return nil, fmt.Errorf("reading postgres result: %w", rows.Err())
-	}
-
-	values := make(map[dskey.Key][]byte, len(keys))
-	for _, k := range keys {
-		var value []byte
-		element, ok := table[k.FQID()]
-		if ok {
-			idx, ok := fieldIndex[k.Field()]
-			if ok {
-				value = element[idx]
-			}
-		}
-
-		if string(value) == "null" {
-			value = nil
-		}
-
-		values[k] = value
-	}
-
-	return values, nil
+	return result, nil
 }
 
 // HistoryInformation fetches the history information for one fqid.
+// TODO: Fix me
 func (p *FlowPostgres) HistoryInformation(ctx context.Context, fqid string, w io.Writer) error {
 	sql := `select distinct on (position) position, timestamp, user_id, information from positions natural join events
 	where fqid = $1 and information::text<>'null'::text order by position asc`
@@ -189,54 +187,15 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 	p.updater.Update(ctx, updateFn)
 }
 
-func prepareQuery(keys []dskey.Key) (uniqueFieldsStr string, fieldIndex map[string]int, uniqueFQID []string) {
-	uniqueFQIDSet := make(map[string]struct{})
-	uniqueFieldsSet := make(map[string]struct{})
-	for _, k := range keys {
-		uniqueFieldsSet[k.Field()] = struct{}{}
-		uniqueFQIDSet[k.FQID()] = struct{}{}
-	}
+// forEachRow is like pgx.ForEachRow but uses CollectableRow instead of scan.
+func forEachRow(rows pgx.Rows, fn func(row pgx.CollectableRow) error) error {
+	defer rows.Close()
 
-	uniqueFields := make([]string, 0, len(uniqueFieldsSet))
-	fieldIndex = make(map[string]int, len(uniqueFieldsSet))
-	for field := range uniqueFieldsSet {
-		uniqueFields = append(uniqueFields, fmt.Sprintf("data->'%s'", field))
-		fieldIndex[field] = len(uniqueFields) - 1
-	}
+	for rows.Next() {
 
-	uniqueFQID = make([]string, 0, len(uniqueFQIDSet))
-	for k := range uniqueFQIDSet {
-		uniqueFQID = append(uniqueFQID, k)
-	}
-	uniqueFieldsStr = strings.Join(uniqueFields, ",")
-	return uniqueFieldsStr, fieldIndex, uniqueFQID
-}
-
-// splitFieldKeys splits a list of keys to many lists where any list has a
-// maximum of different fields.
-func splitFieldKeys(keys []dskey.Key) [][]dskey.Key {
-	sort.Slice(keys, func(i, j int) bool {
-		return keys[i].Field() < keys[j].Field()
-	})
-
-	var out [][]dskey.Key
-	keyCount := 0
-	var nextList []dskey.Key
-	var lastField string
-	for _, k := range keys {
-		nextList = append(nextList, k)
-
-		if k.Field() != lastField {
-			keyCount++
-			if keyCount >= maxFieldsOnQuery {
-				out = append(out, nextList)
-				nextList = nil
-				keyCount = 0
-			}
+		if err := fn(rows); err != nil {
+			return err
 		}
-		lastField = k.Field()
 	}
-	out = append(out, nextList)
-
-	return out
+	return rows.Err()
 }
