@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -65,12 +66,21 @@ func TestFlowPostgres(t *testing.T) {
 				"motion/2/title":   nil,
 			},
 		},
+		{
+			"Empty Data on id list",
+			`
+			INSERT INTO user_ (id, username) values (10,'hugo');
+			`,
+			map[string][]byte{
+				"user/10/meeting_user_ids": nil,
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			// if err := tp.addExampleData(t.Context()); err != nil {
 			// 	t.Fatalf("adding example data: %v", err)
 			// }
-
+			//
 			flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
 			if err != nil {
 				t.Fatalf("NewFlowPostgres(): %v", err)
@@ -95,12 +105,14 @@ func TestFlowPostgres(t *testing.T) {
 				t.Fatalf("Get: %v", err)
 			}
 
+			expect := make(map[dskey.Key][]byte)
 			for k, v := range tt.expect {
-				if string(got[dskey.MustKey(k)]) != string(v) {
-					t.Errorf("got %v, want %v", got[dskey.MustKey(k)], v)
-				}
+				expect[dskey.MustKey(k)] = v
 			}
 
+			if !reflect.DeepEqual(got, expect) {
+				t.Errorf("\nGot\t\t%v\nexpect\t%v", got, expect)
+			}
 		})
 	}
 }

@@ -122,16 +122,18 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 					return fmt.Errorf("invalid key on field %d: %w", i, err)
 				}
 
-				bytes, err := json.Marshal(value)
-				if err != nil {
-					return fmt.Errorf("converting field %d to json: %w", i, err)
-				}
+				keyValues[key] = nil
+				if value != nil {
+					bytes, err := json.Marshal(value)
+					if err != nil {
+						return fmt.Errorf("converting field %d to json: %w", i, err)
+					}
 
-				keyValues[key] = bytes
+					keyValues[key] = bytes
+				}
 			}
 
 			return nil
-
 		})
 		if err != nil {
 			return nil, fmt.Errorf("parse collection %s: %w", collection, err)
