@@ -83,13 +83,14 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 		collectionIDs[key.Collection()] = append(collectionIDs[key.Collection()], key.ID())
 	}
 
-	result := make(map[dskey.Key][]byte, len(keys))
+	keyValues := make(map[dskey.Key][]byte, len(keys))
 	for collection, ids := range collectionIDs {
 		collectionTableName := collection
 		if collectionTableName == "user" || collectionTableName == "group" {
 			collectionTableName += "_"
 		}
 
+		// TODO: maybe only fetch id and requested keys
 		sql := fmt.Sprintf(`SELECT * FROM %s WHERE id = ANY ($1) `, collectionTableName)
 
 		rows, err := p.pool.Query(ctx, sql, ids)
@@ -126,7 +127,7 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 					return fmt.Errorf("converting field %d to json: %w", i, err)
 				}
 
-				result[key] = bytes
+				keyValues[key] = bytes
 			}
 
 			return nil
@@ -135,6 +136,13 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 		if err != nil {
 			return nil, fmt.Errorf("parse collection %s: %w", collection, err)
 		}
+	}
+
+	// The current implementation of cache expects to gets exactly the keys,
+	// that where requested. If a key does not exist, nil has to be used.
+	result := make(map[dskey.Key][]byte, len(keys))
+	for _, key := range keys {
+		result[key] = keyValues[key]
 	}
 
 	return result, nil
