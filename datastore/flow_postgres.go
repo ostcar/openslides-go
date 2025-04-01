@@ -199,22 +199,33 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 	}
 	defer conn.Release()
 
-	// TODO: On which channel should we listen?
 	_, err = conn.Exec(ctx, "LISTEN insert")
 	if err != nil {
-		updateFn(nil, fmt.Errorf("listen on channel: %w", err))
+		updateFn(nil, fmt.Errorf("listen on channel insert: %w", err))
+		return
+	}
+
+	_, err = conn.Exec(ctx, "LISTEN update")
+	if err != nil {
+		updateFn(nil, fmt.Errorf("listen on channel update: %w", err))
+		return
+	}
+
+	_, err = conn.Exec(ctx, "LISTEN delete")
+	if err != nil {
+		updateFn(nil, fmt.Errorf("listen on channel delete: %w", err))
 		return
 	}
 
 	for {
 		notification, err := conn.Conn().WaitForNotification(ctx)
 		if err != nil {
-			updateFn(nil, fmt.Errorf("listen on channel: %w", err))
+			updateFn(nil, fmt.Errorf("wait for notification: %w", err))
 			return
 		}
 
 		// TODO: How to bundle many keys in one update?
-		key, err := dskey.FromString(notification.Payload)
+		key, err := keyWithWrongNamefromString(notification.Payload)
 		if err != nil {
 			updateFn(nil, fmt.Errorf("got invalid key `%s`from pg_notify: %w", notification.Payload, err))
 			continue
@@ -235,4 +246,19 @@ func forEachRow(rows pgx.Rows, fn func(row pgx.CollectableRow) error) error {
 		}
 	}
 	return rows.Err()
+}
+
+// keyWithWrongNamefromString is like dskey.FromString but fixes the case, that
+// the collection has a _t at the end. Should be removed when this is fixed in
+// postgres.
+func keyWithWrongNamefromString(keyStr string) (dskey.Key, error) {
+	idx := strings.IndexByte(keyStr, '/')
+	if idx == -1 {
+		return 0, fmt.Errorf("invalid key `%s`: missing slash", keyStr)
+	}
+
+	collectionName := strings.TrimSuffix(keyStr[:idx], "_t")
+
+	fixedKey := fmt.Sprintf("%s/%s", collectionName, keyStr[idx:])
+	return dskey.FromString(fixedKey)
 }
