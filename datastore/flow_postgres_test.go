@@ -71,7 +71,7 @@ func TestFlowPostgres(t *testing.T) {
 			// 	t.Fatalf("adding example data: %v", err)
 			// }
 
-			flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env), nil)
+			flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
 			if err != nil {
 				t.Fatalf("NewFlowPostgres(): %v", err)
 			}

@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/OpenSlides/openslides-go/datastore/dskey"
-	"github.com/OpenSlides/openslides-go/datastore/flow"
 	"github.com/OpenSlides/openslides-go/environment"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,8 +25,7 @@ var (
 
 // FlowPostgres uses postgres to get the connections.
 type FlowPostgres struct {
-	pool    *pgxpool.Pool
-	updater flow.Updater
+	pool *pgxpool.Pool
 }
 
 // encodePostgresConfig encodes a string to be used in the postgres key value style.
@@ -42,7 +40,7 @@ func encodePostgresConfig(s string) string {
 // NewFlowPostgres initializes a SourcePostgres.
 //
 // TODO: This should be unexported, but there is an import cycle in the tests.
-func NewFlowPostgres(lookup environment.Environmenter, updater flow.Updater) (*FlowPostgres, error) {
+func NewFlowPostgres(lookup environment.Environmenter) (*FlowPostgres, error) {
 	password, err := environment.ReadSecret(lookup, envPostgresPasswordFile)
 	if err != nil {
 		return nil, fmt.Errorf("reading postgres password: %w", err)
@@ -69,7 +67,7 @@ func NewFlowPostgres(lookup environment.Environmenter, updater flow.Updater) (*F
 		return nil, fmt.Errorf("creating connection pool: %w", err)
 	}
 
-	flow := FlowPostgres{pool: pool, updater: updater}
+	flow := FlowPostgres{pool: pool}
 
 	return &flow, nil
 }
@@ -182,9 +180,38 @@ func (p *FlowPostgres) HistoryInformation(ctx context.Context, fqid string, w io
 	return nil
 }
 
-// Update calls the updater.
+// Update listens on pg notify to fetch updates.
 func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][]byte, error)) {
-	p.updater.Update(ctx, updateFn)
+	conn, err := p.pool.Acquire(ctx)
+	if err != nil {
+		updateFn(nil, fmt.Errorf("acquire connection: %w", err))
+		return
+	}
+	defer conn.Release()
+
+	// TODO: On which channel should we listen?
+	_, err = conn.Exec(ctx, "LISTEN insert")
+	if err != nil {
+		updateFn(nil, fmt.Errorf("listen on channel: %w", err))
+		return
+	}
+
+	for {
+		notification, err := conn.Conn().WaitForNotification(ctx)
+		if err != nil {
+			updateFn(nil, fmt.Errorf("listen on channel: %w", err))
+			return
+		}
+
+		// TODO: How to bundle many keys in one update?
+		key, err := dskey.FromString(notification.Payload)
+		if err != nil {
+			updateFn(nil, fmt.Errorf("got invalid key `%s`from pg_notify: %w", notification.Payload, err))
+			continue
+		}
+
+		updateFn(p.Get(ctx, key))
+	}
 }
 
 // forEachRow is like pgx.ForEachRow but uses CollectableRow instead of scan.
