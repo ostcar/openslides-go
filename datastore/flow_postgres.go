@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"slices"
+	"strconv"
 	"strings"
-	"time"
 
 	"github.com/OpenSlides/openslides-go/datastore/dskey"
 	"github.com/OpenSlides/openslides-go/environment"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:generate  sh -c "go run genfields/main.go > field_def.go"
 
 var (
 	envPostgresHost         = environment.NewVariable("DATABASE_HOST", "localhost", "Postgres Host.")
@@ -26,6 +27,8 @@ var (
 // FlowPostgres uses postgres to get the connections.
 type FlowPostgres struct {
 	pool *pgxpool.Pool
+
+	fields map[string][]string // TODO: Generate this list at compiletime.
 }
 
 // encodePostgresConfig encodes a string to be used in the postgres key value style.
@@ -85,6 +88,7 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 
 	keyValues := make(map[dskey.Key][]byte, len(keys))
 	for collection, ids := range collectionIDs {
+		// TODO: Fix me after this is fixed: https://github.com/OpenSlides/openslides-meta/issues/243
 		collectionTableName := collection
 		if collectionTableName == "user" || collectionTableName == "group" {
 			collectionTableName += "_"
@@ -150,46 +154,6 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 	return result, nil
 }
 
-// HistoryInformation fetches the history information for one fqid.
-// TODO: Fix me
-func (p *FlowPostgres) HistoryInformation(ctx context.Context, fqid string, w io.Writer) error {
-	sql := `select distinct on (position) position, timestamp, user_id, information from positions natural join events
-	where fqid = $1 and information::text<>'null'::text order by position asc`
-
-	rows, err := p.pool.Query(ctx, sql, fqid)
-	if err != nil {
-		return fmt.Errorf("sending query: %w", err)
-	}
-	defer rows.Close()
-
-	type historyInformation struct {
-		Position    int             `json:"position"`
-		Timestamp   int             `json:"timestamp"`
-		UserID      int             `json:"user_id"`
-		Information json.RawMessage `json:"information"`
-	}
-
-	output := make(map[string][]historyInformation, 1)
-
-	for rows.Next() {
-		var hi historyInformation
-		var timestamp time.Time
-
-		if err = rows.Scan(&hi.Position, &timestamp, &hi.UserID, &hi.Information); err != nil {
-			return fmt.Errorf("scan: %w", err)
-		}
-
-		hi.Timestamp = int(timestamp.Unix())
-		output[fqid] = append(output[fqid], hi)
-	}
-
-	if err := json.NewEncoder(w).Encode(output); err != nil {
-		return fmt.Errorf("encode: %w", err)
-	}
-
-	return nil
-}
-
 // Update listens on pg notify to fetch updates.
 func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][]byte, error)) {
 	conn, err := p.pool.Acquire(ctx)
@@ -199,6 +163,8 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 	}
 	defer conn.Release()
 
+	// TODO: Only listen to one channel after this is fixed:
+	// https://github.com/OpenSlides/openslides-meta/issues/245
 	_, err = conn.Exec(ctx, "LISTEN insert")
 	if err != nil {
 		updateFn(nil, fmt.Errorf("listen on channel insert: %w", err))
@@ -224,15 +190,33 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 			return
 		}
 
-		// TODO: How to bundle many keys in one update?
-		key, err := keyWithWrongNamefromString(notification.Payload)
+		collectionName, id, err := getCollectionNameAndID(notification.Payload)
 		if err != nil {
-			updateFn(nil, fmt.Errorf("got invalid key `%s`from pg_notify: %w", notification.Payload, err))
+			updateFn(nil, fmt.Errorf("split fqid from %s: %w", notification.Payload, err))
 			continue
 		}
 
-		updateFn(p.Get(ctx, key))
+		keys, err := createKeyList(collectionName, id)
+		if err != nil {
+			updateFn(nil, fmt.Errorf("creating key list from notification: %w", err))
+			continue
+		}
+
+		updateFn(p.Get(ctx, keys...))
 	}
+}
+
+func createKeyList(collection string, id int) ([]dskey.Key, error) {
+	fields := collectionFields[collection]
+	keys := make([]dskey.Key, len(fields))
+	var err error
+	for i, field := range fields {
+		keys[i], err = dskey.FromParts(collection, id, field)
+		if err != nil {
+			return nil, fmt.Errorf("creating key from parts: %w", err)
+		}
+	}
+	return keys, nil
 }
 
 // forEachRow is like pgx.ForEachRow but uses CollectableRow instead of scan.
@@ -248,17 +232,20 @@ func forEachRow(rows pgx.Rows, fn func(row pgx.CollectableRow) error) error {
 	return rows.Err()
 }
 
-// keyWithWrongNamefromString is like dskey.FromString but fixes the case, that
-// the collection has a _t at the end. Should be removed when this is fixed in
-// postgres.
-func keyWithWrongNamefromString(keyStr string) (dskey.Key, error) {
-	idx := strings.IndexByte(keyStr, '/')
-	if idx == -1 {
-		return 0, fmt.Errorf("invalid key `%s`: missing slash", keyStr)
+// getCollectionNameAndID removes the suffix from the collection name.
+func getCollectionNameAndID(keyStr string) (string, int, error) {
+	idx1 := strings.IndexByte(keyStr, '/')
+	idx2 := strings.LastIndexByte(keyStr, '/')
+	if idx1 == -1 {
+		return "", 0, fmt.Errorf("invalid key `%s`: missing slash", keyStr)
 	}
 
-	collectionName := strings.TrimSuffix(keyStr[:idx], "_t")
+	id, err := strconv.Atoi(keyStr[idx1+1 : idx2])
+	if err != nil {
+		return "", 0, fmt.Errorf("invalid key `%s`: id is not an integer", keyStr)
+	}
 
-	fixedKey := fmt.Sprintf("%s/%s", collectionName, keyStr[idx:])
-	return dskey.FromString(fixedKey)
+	// Can be removed when this is merged:
+	// https://github.com/OpenSlides/openslides-meta/pull/240
+	return strings.TrimSuffix(keyStr[:idx1], "_t"), id, nil
 }
