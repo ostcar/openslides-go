@@ -235,12 +235,12 @@ func forEachRow(rows pgx.Rows, fn func(row pgx.CollectableRow) error) error {
 // getCollectionNameAndID removes the suffix from the collection name.
 func getCollectionNameAndID(keyStr string) (string, int, error) {
 	idx1 := strings.IndexByte(keyStr, '/')
-	idx2 := strings.LastIndexByte(keyStr, '/')
+
 	if idx1 == -1 {
 		return "", 0, fmt.Errorf("invalid key `%s`: missing slash", keyStr)
 	}
 
-	id, err := strconv.Atoi(keyStr[idx1+1 : idx2])
+	id, err := strconv.Atoi(keyStr[idx1+1:])
 	if err != nil {
 		return "", 0, fmt.Errorf("invalid key `%s`: id is not an integer", keyStr)
 	}
