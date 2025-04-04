@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/OpenSlides/openslides-go/datastore/dskey"
 	"github.com/OpenSlides/openslides-go/environment"
@@ -75,6 +76,10 @@ func NewFlowPostgres(lookup environment.Environmenter) (*FlowPostgres, error) {
 	return &flow, nil
 }
 
+func (p *FlowPostgres) Close() {
+	p.pool.Close()
+}
+
 // Get fetches the keys from postgres.
 func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
 	collectionIDs := make(map[string][]int)
@@ -104,20 +109,15 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 		defer rows.Close()
 
 		err = forEachRow(rows, func(row pgx.CollectableRow) error {
-			// TODO: Instead of using row.Values, it would be nicer, if I could
-			// use RawValues or skip .Values all together.
-			values, err := row.Values()
+			values := row.RawValues()
+
+			if row.FieldDescriptions()[0].Name != "id" {
+				return fmt.Errorf("invalid row for collection %s, expect firts value to be the id. Got %s", collection, row.FieldDescriptions()[0].Name)
+			}
+			id, err := strconv.Atoi(string(values[0]))
 			if err != nil {
-				return fmt.Errorf("get values: %w", err)
+				return fmt.Errorf("invalid id %s: %w", string(values[0]), err)
 			}
-
-			// TODO: This expects the first field to be the id.
-			id32, ok := values[0].(int32)
-			if !ok {
-				return fmt.Errorf("invalid id: %v, %T", values[0], values[0])
-			}
-
-			id := int(id32)
 
 			for i, value := range values {
 				field := row.FieldDescriptions()[i].Name
@@ -128,12 +128,11 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 
 				keyValues[key] = nil
 				if value != nil {
-					bytes, err := json.Marshal(value)
+					converted, err := convertValue(value, row.FieldDescriptions()[i].DataTypeOID)
 					if err != nil {
-						return fmt.Errorf("converting field %d to json: %w", i, err)
+						return fmt.Errorf("convert value for field %s/%s: %w", collection, field, err)
 					}
-
-					keyValues[key] = bytes
+					keyValues[key] = converted
 				}
 			}
 
@@ -152,6 +151,52 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 	}
 
 	return result, nil
+}
+
+func convertValue(value []byte, oid uint32) ([]byte, error) {
+	const (
+		PSQLTypeVarChar   = 1043
+		PSQLTypeInt       = 23
+		PSQLTypeBool      = 16
+		PSQLTypeText      = 25
+		PSQLTypeIntList   = 1007
+		PSQLTypeTimestamp = 1184
+		PSQLTypeDecimal   = 1700
+		PSQLTypeJSON      = 3802
+	)
+
+	switch oid {
+	case PSQLTypeVarChar, PSQLTypeText:
+		return json.Marshal(string(value))
+
+	case PSQLTypeInt, PSQLTypeJSON:
+		return value, nil
+
+	case PSQLTypeIntList:
+		value[0] = '['
+		value[len(value)-1] = ']'
+		return value, nil
+
+	case PSQLTypeBool:
+		if string(value) == "t" {
+			return []byte("true"), nil
+		}
+		return []byte("false"), nil
+
+	case PSQLTypeDecimal:
+		return []byte(fmt.Sprintf(`"%s"`, value)), nil
+
+	case PSQLTypeTimestamp:
+		timeValue, err := time.Parse("2006-01-02 15:04:05-07", string(value))
+		if err != nil {
+			return nil, fmt.Errorf("parsing time %s: %w", value, err)
+		}
+
+		return []byte(strconv.Itoa(int(timeValue.Unix()))), nil
+
+	default:
+		return nil, fmt.Errorf("unsupported postgres type %d", oid)
+	}
 }
 
 // Update listens on pg notify to fetch updates.

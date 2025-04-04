@@ -38,7 +38,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Same fqid",
 			`
-			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456')
+			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
 			`,
 			map[string][]byte{
 				"theme/1/name": []byte(`"standard theme"`),
@@ -58,12 +58,9 @@ func TestFlowPostgres(t *testing.T) {
 		},
 		{
 			"Empty Data",
-			`
-			INSERT INTO user_ (id, username) values (55,'hugo');
-			`,
+			``,
 			map[string][]byte{
-				"user/55/username": []byte(`"hugo"`),
-				"motion/2/title":   nil,
+				"motion/2/title": nil,
 			},
 		},
 		{
@@ -75,25 +72,74 @@ func TestFlowPostgres(t *testing.T) {
 				"user/10/meeting_user_ids": nil,
 			},
 		},
+		{
+			"Decimal",
+			`
+			INSERT INTO user_ (id, username, default_vote_weight) values (15,'hugo', 1.5);
+			`,
+			map[string][]byte{
+				"user/15/default_vote_weight": []byte(`"1.500000"`),
+			},
+		},
+		{
+			"Boolean",
+			`
+			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO organization (id, name, default_language, theme_id, enable_electronic_voting) VALUES (1, 'my orga', 'en', 1, true);
+			`,
+			map[string][]byte{
+				"organization/1/enable_electronic_voting": []byte(`true`),
+			},
+		},
+		{
+			"JSON",
+			`
+			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO organization (id, name, default_language, theme_id, saml_attr_mapping) VALUES (1, 'my orga', 'en', 1, '{"key1": "value1", "key2": "value2"}');
+			`,
+			map[string][]byte{
+				"organization/1/saml_attr_mapping": []byte(`{"key1": "value1", "key2": "value2"}`),
+			},
+		},
+		{
+			"Text",
+			`
+			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO organization (id, name, default_language, theme_id, saml_private_key) VALUES (1, 'my orga', 'en', 1, 'some text');
+			`,
+			map[string][]byte{
+				"organization/1/saml_private_key": []byte(`"some text"`),
+			},
+		},
+		{
+			"Timestamp",
+			`
+			INSERT INTO user_ (username, last_login) values ('hugo', '1999-01-08');
+			`,
+			map[string][]byte{
+				"user/1/last_login": []byte(`915753600`),
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			// if err := tp.addExampleData(t.Context()); err != nil {
-			// 	t.Fatalf("adding example data: %v", err)
-			// }
-			//
-			flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
-			if err != nil {
-				t.Fatalf("NewFlowPostgres(): %v", err)
-			}
+			ctx := t.Context()
+			tp.cleanup(t)
 
 			conn, err := tp.conn(ctx)
 			if err != nil {
-				t.Fatalf("creating connection: %v", err)
+				t.Fatalf("create connection: %v", err)
 			}
+			defer conn.Close(ctx)
 
 			if _, err := conn.Exec(ctx, tt.insert); err != nil {
 				t.Fatalf("adding example data: %v", err)
 			}
+
+			flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
+			if err != nil {
+				t.Fatalf("NewFlowPostgres(): %v", err)
+			}
+			defer flow.Close()
 
 			keys := make([]dskey.Key, 0, len(tt.expect))
 			for k := range tt.expect {
@@ -173,7 +219,7 @@ type testPostgres struct {
 	pgxConfig *pgx.ConnConfig
 }
 
-func newTestPostgres(ctx context.Context) (tp *testPostgres, err error) {
+func newTestPostgres(ctx context.Context) (tp_ *testPostgres, err error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, fmt.Errorf("connect to docker: %w", err)
@@ -181,7 +227,7 @@ func newTestPostgres(ctx context.Context) (tp *testPostgres, err error) {
 
 	runOpts := dockertest.RunOptions{
 		Repository: "postgres",
-		Tag:        "13",
+		Tag:        "15",
 		Env: []string{
 			"POSTGRES_USER=postgres",
 			"POSTGRES_PASSWORD=openslides",
@@ -201,7 +247,7 @@ func newTestPostgres(ctx context.Context) (tp *testPostgres, err error) {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
 
-	tp = &testPostgres{
+	tp := &testPostgres{
 		dockerPool:     pool,
 		dockerResource: resource,
 		pgxConfig:      config,
@@ -255,19 +301,54 @@ func (tp *testPostgres) conn(ctx context.Context) (*pgx.Conn, error) {
 }
 
 func (tp *testPostgres) addSchema(ctx context.Context) error {
+	conn, err := tp.conn(ctx)
+	if err != nil {
+		return fmt.Errorf("creating connection: %w", err)
+	}
+	defer conn.Close(ctx)
+
 	schema, err := os.ReadFile("../meta/dev/sql/schema_relational.sql")
 	if err != nil {
 		return fmt.Errorf("reading schema file: %w", err)
 	}
 
-	conn, err := tp.conn(ctx)
-	if err != nil {
-		return fmt.Errorf("creating connection: %w", err)
-	}
-
 	if _, err := conn.Exec(ctx, string(schema)); err != nil {
 		return fmt.Errorf("adding schema: %w", err)
 	}
+	return nil
+}
+
+func (tp *testPostgres) cleanup(t *testing.T) {
+	t.Cleanup(func() {
+		ctx := context.Background()
+		if err := tp.reset(ctx); err != nil {
+			t.Logf("Cleanup database: %v", err)
+		}
+	})
+}
+
+func (tp *testPostgres) reset(ctx context.Context) error {
+	// Use different database for drop database
+	config := tp.pgxConfig.Copy()
+	config.Database = "postgres"
+	conn, err := pgx.ConnectConfig(ctx, config)
+	if err != nil {
+		return fmt.Errorf("create connection: %w", err)
+	}
+	defer conn.Close(ctx)
+
+	if _, err := conn.Exec(ctx, `DROP DATABASE database WITH (FORCE);`); err != nil {
+		return fmt.Errorf("dropping database: %w", err)
+	}
+
+	if _, err := conn.Exec(ctx, `CREATE DATABASE database;`); err != nil {
+		return fmt.Errorf("recreating database: %w", err)
+	}
+
+	if err := tp.addSchema(ctx); err != nil {
+		return fmt.Errorf("adding schema: %w", err)
+	}
+
 	return nil
 }
 
@@ -284,24 +365,6 @@ func (tp *testPostgres) addExampleData(ctx context.Context) error {
 
 	if _, err := conn.Exec(ctx, string(exampleData)); err != nil {
 		return fmt.Errorf("adding example data: %w", err)
-	}
-
-	return nil
-}
-
-func (tp *testPostgres) dropData(ctx context.Context) error {
-	conn, err := tp.conn(ctx)
-	if err != nil {
-		return fmt.Errorf("creating connection: %w", err)
-	}
-
-	// TODO:
-	// - Get all tables from the database
-	// - For each table, truncate it
-
-	sql := `TRUNCATE models;`
-	if _, err := conn.Exec(ctx, sql); err != nil {
-		return fmt.Errorf("executing psql `%s`: %w", sql, err)
 	}
 
 	return nil
