@@ -82,6 +82,16 @@ func (p *FlowPostgres) Close() {
 
 // Get fetches the keys from postgres.
 func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
+	conn, err := p.pool.Acquire(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("acquiring connection: %w", err)
+	}
+	defer conn.Release()
+
+	return getWithConn(ctx, conn.Conn(), keys...)
+}
+
+func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
 	collectionIDs := make(map[string][]int)
 	for _, key := range keys {
 		if slices.Contains(collectionIDs[key.Collection()], key.ID()) {
@@ -102,7 +112,7 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 		// TODO: maybe only fetch id and requested keys
 		sql := fmt.Sprintf(`SELECT * FROM %s WHERE id = ANY ($1) `, collectionTableName)
 
-		rows, err := p.pool.Query(ctx, sql, ids)
+		rows, err := conn.Query(ctx, sql, ids)
 		if err != nil {
 			return nil, fmt.Errorf("sending query for %s: %w", collection, err)
 		}
@@ -208,23 +218,9 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 	}
 	defer conn.Release()
 
-	// TODO: Only listen to one channel after this is fixed:
-	// https://github.com/OpenSlides/openslides-meta/issues/245
-	_, err = conn.Exec(ctx, "LISTEN insert")
+	_, err = conn.Exec(ctx, "LISTEN os_notify")
 	if err != nil {
-		updateFn(nil, fmt.Errorf("listen on channel insert: %w", err))
-		return
-	}
-
-	_, err = conn.Exec(ctx, "LISTEN update")
-	if err != nil {
-		updateFn(nil, fmt.Errorf("listen on channel update: %w", err))
-		return
-	}
-
-	_, err = conn.Exec(ctx, "LISTEN delete")
-	if err != nil {
-		updateFn(nil, fmt.Errorf("listen on channel delete: %w", err))
+		updateFn(nil, fmt.Errorf("listen on channel os-notify: %w", err))
 		return
 	}
 
@@ -235,19 +231,33 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 			return
 		}
 
-		collectionName, id, err := getCollectionNameAndID(notification.Payload)
-		if err != nil {
-			updateFn(nil, fmt.Errorf("split fqid from %s: %w", notification.Payload, err))
+		var payload struct {
+			FQIDs []string `json:"fqids"`
+		}
+
+		if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
+			updateFn(nil, fmt.Errorf("unmarshal payload: %w", err))
 			continue
 		}
 
-		keys, err := createKeyList(collectionName, id)
-		if err != nil {
-			updateFn(nil, fmt.Errorf("creating key list from notification: %w", err))
-			continue
+		var allKeys []dskey.Key
+		for _, fqid := range payload.FQIDs {
+			collectionName, id, err := getCollectionNameAndID(fqid)
+			if err != nil {
+				updateFn(nil, fmt.Errorf("split fqid from %s: %w", fqid, err))
+				continue
+			}
+
+			keys, err := createKeyList(collectionName, id)
+			if err != nil {
+				updateFn(nil, fmt.Errorf("creating key list from notification: %w", err))
+				continue
+			}
+
+			allKeys = append(allKeys, keys...)
 		}
 
-		updateFn(p.Get(ctx, keys...))
+		updateFn(getWithConn(ctx, conn.Conn(), allKeys...))
 	}
 }
 

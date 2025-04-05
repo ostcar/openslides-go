@@ -163,6 +163,68 @@ func TestFlowPostgres(t *testing.T) {
 	}
 }
 
+func TestPostgresUpdate(t *testing.T) {
+	ctx := t.Context()
+
+	t.Parallel()
+	if testing.Short() {
+		t.Skip("Postgres Test")
+	}
+
+	tp, err := newTestPostgres(ctx)
+	if err != nil {
+		t.Fatalf("starting postgres: %v", err)
+	}
+	defer tp.Close()
+
+	conn, err := tp.conn(ctx)
+	if err != nil {
+		t.Fatalf("create connection: %v", err)
+	}
+
+	flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
+	if err != nil {
+		t.Fatalf("NewFlowPostgres(): %v", err)
+	}
+
+	keys := []dskey.Key{
+		dskey.MustKey("user/1/username"),
+		dskey.MustKey("theme/1/name"),
+	}
+
+	done := make(chan struct{})
+	// TODO: When update fails, this currently blocks for ever. Maybe use a
+	// timeout.
+	go flow.Update(ctx, func(m map[dskey.Key][]byte, err error) {
+		select {
+		case <-done:
+			// Only call update once.
+			return
+		default:
+		}
+		defer close(done)
+
+		if m[keys[0]] == nil {
+			t.Errorf("key %s not found", keys[0])
+		}
+
+		if m[keys[1]] == nil {
+			t.Errorf("key %s not found", keys[1])
+		}
+	})
+	// TODO: This test could be flaky.
+	//time.Sleep(1 * time.Second) // TODO: How to do this without a sleep?
+	sql := `
+	INSERT INTO user_ (id, username) values (1,'hugo');
+	INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+	`
+	if _, err := conn.Exec(ctx, sql); err != nil {
+		t.Fatalf("adding example data: %v", err)
+	}
+
+	<-done
+}
+
 // func TestBigQuery(t *testing.T) {
 // 	t.Parallel()
 
