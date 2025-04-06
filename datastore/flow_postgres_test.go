@@ -38,7 +38,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Same fqid",
 			`
-			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO theme (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
 			`,
 			map[string][]byte{
 				"theme/1/name": []byte(`"standard theme"`),
@@ -47,8 +47,8 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"different fqid",
 			`
-			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
-			INSERT INTO user_ (id, username, first_name) values (42,'hugo', 'Hugo');
+			INSERT INTO theme (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO "user" (id, username, first_name) values (42,'hugo', 'Hugo');
 			`,
 			map[string][]byte{
 				"user/42/username":   []byte(`"hugo"`),
@@ -66,7 +66,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Empty Data on id list",
 			`
-			INSERT INTO user_ (id, username) values (10,'hugo');
+			INSERT INTO "user" (id, username) values (10,'hugo');
 			`,
 			map[string][]byte{
 				"user/10/meeting_user_ids": nil,
@@ -75,7 +75,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Decimal",
 			`
-			INSERT INTO user_ (id, username, default_vote_weight) values (15,'hugo', 1.5);
+			INSERT INTO "user" (id, username, default_vote_weight) values (15,'hugo', 1.5);
 			`,
 			map[string][]byte{
 				"user/15/default_vote_weight": []byte(`"1.500000"`),
@@ -84,7 +84,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Boolean",
 			`
-			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
 			INSERT INTO organization (id, name, default_language, theme_id, enable_electronic_voting) VALUES (1, 'my orga', 'en', 1, true);
 			`,
 			map[string][]byte{
@@ -94,7 +94,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"JSON",
 			`
-			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
 			INSERT INTO organization (id, name, default_language, theme_id, saml_attr_mapping) VALUES (1, 'my orga', 'en', 1, '{"key1": "value1", "key2": "value2"}');
 			`,
 			map[string][]byte{
@@ -104,7 +104,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Text",
 			`
-			INSERT INTO theme_t (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+			INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
 			INSERT INTO organization (id, name, default_language, theme_id, saml_private_key) VALUES (1, 'my orga', 'en', 1, 'some text');
 			`,
 			map[string][]byte{
@@ -114,7 +114,7 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"Timestamp",
 			`
-			INSERT INTO user_ (username, last_login) values ('hugo', '1999-01-08');
+			INSERT INTO "user" (username, last_login) values ('hugo', '1999-01-08');
 			`,
 			map[string][]byte{
 				"user/1/last_login": []byte(`915753600`),
@@ -215,7 +215,7 @@ func TestPostgresUpdate(t *testing.T) {
 	// TODO: This test could be flaky.
 	//time.Sleep(1 * time.Second) // TODO: How to do this without a sleep?
 	sql := `
-	INSERT INTO user_ (id, username) values (1,'hugo');
+	INSERT INTO "user" (id, username) values (1,'hugo');
 	INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
 	`
 	if _, err := conn.Exec(ctx, sql); err != nil {

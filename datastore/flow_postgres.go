@@ -103,14 +103,8 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 	keyValues := make(map[dskey.Key][]byte, len(keys))
 	for collection, ids := range collectionIDs {
-		// TODO: Fix me after this is fixed: https://github.com/OpenSlides/openslides-meta/issues/243
-		collectionTableName := collection
-		if collectionTableName == "user" || collectionTableName == "group" {
-			collectionTableName += "_"
-		}
-
 		// TODO: maybe only fetch id and requested keys
-		sql := fmt.Sprintf(`SELECT * FROM %s WHERE id = ANY ($1) `, collectionTableName)
+		sql := fmt.Sprintf(`SELECT * FROM "%s" WHERE id = ANY ($1) `, collection)
 
 		rows, err := conn.Query(ctx, sql, ids)
 		if err != nil {
