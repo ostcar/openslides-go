@@ -225,52 +225,53 @@ func TestPostgresUpdate(t *testing.T) {
 	<-done
 }
 
-// func TestBigQuery(t *testing.T) {
-// 	t.Parallel()
+func TestBigQuery(t *testing.T) {
+	t.Parallel()
 
-// 	if testing.Short() {
-// 		t.Skip("Postgres Test")
-// 	}
+	if testing.Short() {
+		t.Skip("Postgres Test")
+	}
 
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer cancel()
+	ctx := t.Context()
 
-// 	tp, err := newTestPostgres(ctx)
-// 	if err != nil {
-// 		t.Fatalf("starting postgres: %v", err)
-// 	}
-// 	defer tp.Close()
+	tp, err := newTestPostgres(ctx)
+	if err != nil {
+		t.Fatalf("starting postgres: %v", err)
+	}
+	defer tp.Close()
 
-// 	source, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env), nil)
-// 	if err != nil {
-// 		t.Fatalf("NewSource(): %v", err)
-// 	}
+	flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
+	if err != nil {
+		t.Fatalf("NewSource(): %v", err)
+	}
 
-// 	count := 2_000
+	conn, err := tp.conn(ctx)
+	if err != nil {
+		t.Fatalf("create connection: %v", err)
+	}
 
-// 	keys := make([]dskey.Key, count)
-// 	for i := 0; i < count; i++ {
-// 		keys[i], _ = dskey.FromParts("user", 1, fmt.Sprintf("f%d", i))
-// 	}
+	count := 2_000
+	keys := make([]dskey.Key, count)
+	expected := make(map[dskey.Key][]byte)
+	for i := range count {
+		keys[i], _ = dskey.FromParts("user", 1, "username")
+		expected[keys[i]] = []byte(`"hugo"`)
 
-// 	testData := make(map[dskey.Key][]byte)
-// 	for _, key := range keys {
-// 		testData[key] = []byte(fmt.Sprintf(`"%s"`, key.String()))
-// 	}
+		sql := `INSERT INTO "user" (username) values ('hugo');`
+		if _, err := conn.Exec(ctx, sql); err != nil {
+			t.Fatalf("adding user %d: %v", i+1, err)
+		}
+	}
 
-// 	if err := tp.addTestData(ctx, testData); err != nil {
-// 		t.Fatalf("Writing test data: %v", err)
-// 	}
+	got, err := flow.Get(ctx, keys...)
+	if err != nil {
+		t.Errorf("Sending request with %d fields returns: %v", count, err)
+	}
 
-// 	got, err := source.Get(ctx, keys...)
-// 	if err != nil {
-// 		t.Errorf("Sending request with %d fields returns: %v", count, err)
-// 	}
-
-// 	if !reflect.DeepEqual(got, testData) {
-// 		t.Errorf("testdata is diffrent then the result: for key %s got('%s') expect ('%s')", keys[1600], got[keys[1600]], testData[keys[1600]])
-// 	}
-// }
+	if !reflect.DeepEqual(got, expected) {
+		t.Errorf("got != expected: %v, %v", got[keys[0]], expected[keys[0]])
+	}
+}
 
 type testPostgres struct {
 	dockerPool     *dockertest.Pool
