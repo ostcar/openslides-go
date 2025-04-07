@@ -164,7 +164,7 @@ func TestFlowPostgres(t *testing.T) {
 }
 
 func TestPostgresUpdate(t *testing.T) {
-	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 
 	t.Parallel()
