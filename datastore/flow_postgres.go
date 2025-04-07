@@ -28,8 +28,6 @@ var (
 // FlowPostgres uses postgres to get the connections.
 type FlowPostgres struct {
 	pool *pgxpool.Pool
-
-	fields map[string][]string // TODO: Generate this list at compiletime.
 }
 
 // encodePostgresConfig encodes a string to be used in the postgres key value style.
@@ -42,8 +40,6 @@ func encodePostgresConfig(s string) string {
 }
 
 // NewFlowPostgres initializes a SourcePostgres.
-//
-// TODO: This should be unexported, but there is an import cycle in the tests.
 func NewFlowPostgres(lookup environment.Environmenter) (*FlowPostgres, error) {
 	password, err := environment.ReadSecret(lookup, envPostgresPasswordFile)
 	if err != nil {
@@ -215,7 +211,7 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 
 	_, err = conn.Exec(ctx, "LISTEN os_notify")
 	if err != nil {
-		updateFn(nil, fmt.Errorf("listen on channel os-notify: %w", err))
+		updateFn(nil, fmt.Errorf("listen on channel os_notify: %w", err))
 		return
 	}
 
