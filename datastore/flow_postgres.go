@@ -76,6 +76,7 @@ func NewFlowPostgres(lookup environment.Environmenter) (*FlowPostgres, error) {
 	return &flow, nil
 }
 
+// Close closes the connection pool.
 func (p *FlowPostgres) Close() {
 	p.pool.Close()
 }
