@@ -164,7 +164,8 @@ func TestFlowPostgres(t *testing.T) {
 }
 
 func TestPostgresUpdate(t *testing.T) {
-	ctx := t.Context()
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
 
 	t.Parallel()
 	if testing.Short() {
@@ -213,7 +214,7 @@ func TestPostgresUpdate(t *testing.T) {
 		}
 	})
 	// TODO: This test could be flaky.
-	//time.Sleep(1 * time.Second) // TODO: How to do this without a sleep?
+	time.Sleep(5 * time.Second) // TODO: How to do this without a sleep?
 	sql := `
 	INSERT INTO "user" (id, username) values (1,'hugo');
 	INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
