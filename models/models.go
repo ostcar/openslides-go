@@ -3,33 +3,71 @@ package models
 import (
 	_ "embed" // needed for embeding
 	"fmt"
-	"io"
+	"os"
+	"path"
 	"strings"
 
 	"github.com/goccy/go-yaml"
 )
 
-// Unmarshal parses the content of models.yml to a datastruct.q
-func Unmarshal(r io.Reader) (map[string]Model, error) {
-	var m map[string]Model
+// Unmarshal parses the content of models.yml to a datastruct.
+func Unmarshal(metaPath string) (map[string]Model, error) {
+	collectionPath := path.Join(metaPath, "collections")
+	modelsPath := fmt.Sprintf("%s/models.yml", metaPath)
 
-	var tmp map[string]interface{}
-	if err := yaml.NewDecoder(r).Decode(&tmp); err != nil {
-		return m, err
-	}
-
-	if _, ok := tmp["_meta"]; ok {
-		delete(tmp, "_meta")
-	}
-
-	cleanYml, err := yaml.Marshal(tmp)
+	collections, err := readCollections(collectionPath)
 	if err != nil {
-		return m, err
+		return nil, fmt.Errorf("reading collections: %w", err)
 	}
 
-	if err := yaml.Unmarshal(cleanYml, &m); err != nil {
-		return nil, fmt.Errorf("decoding models: %w", err)
+	yamlOption := yaml.ReferenceFiles(modelsPath)
+
+	m := make(map[string]Model, len(collections))
+	for _, collectionName := range collections {
+		collectionFile := path.Join(collectionPath, collectionName)
+		collection, err := parseCollectionFile(fmt.Sprintf("%s.yml", collectionFile), yamlOption)
+		if err != nil {
+			return nil, fmt.Errorf("parsing collection `%s`: %w", collectionName, err)
+		}
+		m[collectionName] = collection
 	}
+
+	return m, nil
+}
+
+func readCollections(path string) ([]string, error) {
+	files, err := os.ReadDir(path)
+	if err != nil {
+		return nil, fmt.Errorf("open collection dir: %w", err)
+	}
+
+	var names []string
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".yml") {
+			names = append(names, strings.TrimSuffix(file.Name(), ".yml"))
+		}
+	}
+	return names, nil
+}
+
+func parseCollectionFile(path string, refOption yaml.DecodeOption) (Model, error) {
+	cf, err := os.Open(path)
+	if err != nil {
+		return Model{}, fmt.Errorf("opening collection `%s`: %w", path, err)
+	}
+	defer cf.Close()
+
+	// This is a workaround until this is fixed:
+	// https://github.com/goccy/go-yaml/issues/690
+	var v map[string]*Field
+	if err := yaml.NewDecoder(cf, refOption).Decode(&v); err != nil {
+		return Model{}, fmt.Errorf("decoding collection %s: %w", path, err)
+	}
+
+	m := Model{
+		Fields: v,
+	}
+
 	return m, nil
 }
 

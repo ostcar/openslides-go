@@ -185,10 +185,6 @@ func genCollections(buf *bytes.Buffer, fromYML map[string]models.Model) error {
 	return nil
 }
 
-func openModelYML() (io.ReadCloser, error) {
-	return os.Open("../../meta/models.yml")
-}
-
 // toFields returns all fields from the models.yml with there go-type as string.
 func toFields(raw map[string]models.Model) ([]field, error) {
 	var fields []field
@@ -314,13 +310,7 @@ func toCollections(raw map[string]models.Model) []Collection {
 }
 
 func parseModelsYml() (map[string]models.Model, error) {
-	r, err := openModelYML()
-	if err != nil {
-		return nil, fmt.Errorf("open models.yml: %v", err)
-	}
-	defer r.Close()
-
-	inData, err := models.Unmarshal(r)
+	inData, err := models.Unmarshal("../../meta")
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling models.yml: %w", err)
 	}

@@ -15,13 +15,7 @@ import (
 )
 
 func main() {
-	r, err := openModelYML()
-	if err != nil {
-		log.Fatalf("Can not load models defition: %v", err)
-	}
-	defer r.Close()
-
-	collectionFields, err := parse(r)
+	collectionFields, err := parse()
 	if err != nil {
 		log.Fatalf("Can not parse model definition: %v", err)
 	}
@@ -31,17 +25,13 @@ func main() {
 	}
 }
 
-func openModelYML() (io.ReadCloser, error) {
-	return os.Open("../../meta/models.yml")
-}
-
 type collectionField struct {
 	Collection string
 	Field      string
 }
 
-func parse(r io.Reader) ([]collectionField, error) {
-	inData, err := models.Unmarshal(r)
+func parse() ([]collectionField, error) {
+	inData, err := models.Unmarshal("../../meta")
 	if err != nil {
 		return nil, fmt.Errorf("unmarshalling models.yml: %w", err)
 	}
