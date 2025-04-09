@@ -107,7 +107,6 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 		if err != nil {
 			return nil, fmt.Errorf("sending query for %s: %w", collection, err)
 		}
-		defer rows.Close()
 
 		err = forEachRow(rows, func(row pgx.CollectableRow) error {
 			values := row.RawValues()
@@ -128,13 +127,15 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 				}
 
 				keyValues[key] = nil
-				if value != nil {
-					converted, err := convertValue(value, row.FieldDescriptions()[i].DataTypeOID)
-					if err != nil {
-						return fmt.Errorf("convert value for field %s/%s: %w", collection, field, err)
-					}
-					keyValues[key] = converted
+				if value == nil {
+					continue
 				}
+
+				converted, err := convertValue(value, row.FieldDescriptions()[i].DataTypeOID)
+				if err != nil {
+					return fmt.Errorf("convert value for field %s/%s: %w", collection, field, err)
+				}
+				keyValues[key] = converted
 			}
 
 			return nil
