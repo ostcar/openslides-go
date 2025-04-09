@@ -193,7 +193,7 @@ func TestPostgresUpdate(t *testing.T) {
 		dskey.MustKey("theme/1/name"),
 	}
 
-	done := make(chan struct{})
+	done := make(chan error)
 	// TODO: When update fails, this currently blocks for ever. Maybe use a
 	// timeout.
 	go flow.Update(ctx, func(m map[dskey.Key][]byte, err error) {
@@ -203,15 +203,24 @@ func TestPostgresUpdate(t *testing.T) {
 			return
 		default:
 		}
-		defer close(done)
+
+		if err != nil {
+			done <- err
+			return
+		}
 
 		if m[keys[0]] == nil {
-			t.Errorf("key %s not found", keys[0])
+			done <- fmt.Errorf("key %s not found", keys[0])
+			return
 		}
 
 		if m[keys[1]] == nil {
-			t.Errorf("key %s not found", keys[1])
+			done <- fmt.Errorf("key %s not found", keys[1])
+			return
 		}
+
+		done <- nil
+		return
 	})
 	// TODO: This test could be flaky.
 	time.Sleep(5 * time.Second) // TODO: How to do this without a sleep?
@@ -223,7 +232,9 @@ func TestPostgresUpdate(t *testing.T) {
 		t.Fatalf("adding example data: %v", err)
 	}
 
-	<-done
+	if err := <-done; err != nil {
+		t.Errorf("Error: %v", err)
+	}
 }
 
 func TestBigQuery(t *testing.T) {

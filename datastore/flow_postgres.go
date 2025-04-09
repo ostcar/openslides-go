@@ -223,26 +223,39 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 		}
 
 		var payload struct {
-			FQIDs []string `json:"fqids"`
+			XACTID int `json:"xactId"`
 		}
 
 		if err := json.Unmarshal([]byte(notification.Payload), &payload); err != nil {
-			updateFn(nil, fmt.Errorf("unmarshal payload: %w", err))
-			continue
+			updateFn(nil, fmt.Errorf("unmarshal notify payload: %w", err))
+			return
+		}
+
+		sql := `SELECT DISTINCT fqid FROM os_notify_log_t WHERE xact_id = $1;`
+		rows, err := conn.Conn().Query(ctx, sql, payload.XACTID)
+		if err != nil {
+			updateFn(nil, fmt.Errorf("query fqids for transaction %d: %w", payload.XACTID, err))
+			return
+		}
+
+		fqids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		if err != nil {
+			updateFn(nil, fmt.Errorf("parse rows: %w", err))
+			return
 		}
 
 		var allKeys []dskey.Key
-		for _, fqid := range payload.FQIDs {
+		for _, fqid := range fqids {
 			collectionName, id, err := getCollectionNameAndID(fqid)
 			if err != nil {
 				updateFn(nil, fmt.Errorf("split fqid from %s: %w", fqid, err))
-				continue
+				return
 			}
 
 			keys, err := createKeyList(collectionName, id)
 			if err != nil {
 				updateFn(nil, fmt.Errorf("creating key list from notification: %w", err))
-				continue
+				return
 			}
 
 			allKeys = append(allKeys, keys...)
