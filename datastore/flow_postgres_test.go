@@ -205,7 +205,7 @@ func TestPostgresUpdate(t *testing.T) {
 		}
 
 		if err != nil {
-			done <- err
+			done <- fmt.Errorf("from Update callback: %w", err)
 			return
 		}
 

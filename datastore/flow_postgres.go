@@ -232,12 +232,23 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 			return
 		}
 
-		sql := `SELECT DISTINCT fqid FROM os_notify_log_t WHERE xact_id = $1;`
+		tmpRows, err := conn.Conn().Query(ctx, `SELECT * from os_notify_log_t`)
+		if err != nil {
+			panic(err)
+		}
+		data, err := pgx.CollectRows(tmpRows, pgx.RowToMap)
+		fmt.Println(data, err)
+
+		sql := `SELECT DISTINCT fqid FROM os_notify_log_t WHERE xact_id = $1::xid8;`
 		rows, err := conn.Conn().Query(ctx, sql, payload.XACTID)
 		if err != nil {
-			updateFn(nil, fmt.Errorf("query fqids for transaction %d: %w", payload.XACTID, err))
+			updateFn(nil, fmt.Errorf("query fqids for transaction %q: %w", payload.XACTID, err))
 			return
 		}
+
+		// data, err = pgx.CollectRows(rows, pgx.RowToMap)
+		// fmt.Println(data, err)
+		// return
 
 		fqids, err := pgx.CollectRows(rows, pgx.RowTo[string])
 		if err != nil {
