@@ -1691,6 +1691,7 @@ type Meeting struct {
 	TemplateForOrganization                      *dsfetch.Maybe[Organization]
 	TopicList                                    []Topic
 	TopicPollDefaultGroupList                    []Group
+	UserList                                     []User
 	VoteList                                     []Vote
 }
 
@@ -2957,6 +2958,18 @@ func (b *meetingBuilder) TopicPollDefaultGroupList() *groupBuilder {
 			parent:   b,
 			idField:  "TopicPollDefaultGroupIDs",
 			relField: "TopicPollDefaultGroupList",
+			many:     true,
+		},
+	}
+}
+
+func (b *meetingBuilder) UserList() *userBuilder {
+	return &userBuilder{
+		builder: builder[userBuilder, *userBuilder, User]{
+			fetch:    b.fetch,
+			parent:   b,
+			idField:  "UserIDs",
+			relField: "UserList",
 			many:     true,
 		},
 	}
@@ -7100,9 +7113,9 @@ type User struct {
 	DefaultVoteWeight           string
 	DelegatedVoteIDs            []int
 	Email                       string
+	External                    bool
 	FirstName                   string
 	GenderID                    dsfetch.Maybe[int]
-	Guest                       bool
 	HomeCommitteeID             dsfetch.Maybe[int]
 	ID                          int
 	IsActive                    bool
@@ -7132,6 +7145,7 @@ type User struct {
 	Gender                      *dsfetch.Maybe[Gender]
 	HomeCommittee               *dsfetch.Maybe[Committee]
 	IsPresentInMeetingList      []Meeting
+	MeetingList                 []Meeting
 	MeetingUserList             []MeetingUser
 	OptionList                  []Option
 	Organization                *Organization
@@ -7153,9 +7167,9 @@ func (b *userBuilder) lazy(ds *Fetch, id int) *User {
 	ds.User_DefaultVoteWeight(id).Lazy(&c.DefaultVoteWeight)
 	ds.User_DelegatedVoteIDs(id).Lazy(&c.DelegatedVoteIDs)
 	ds.User_Email(id).Lazy(&c.Email)
+	ds.User_External(id).Lazy(&c.External)
 	ds.User_FirstName(id).Lazy(&c.FirstName)
 	ds.User_GenderID(id).Lazy(&c.GenderID)
-	ds.User_Guest(id).Lazy(&c.Guest)
 	ds.User_HomeCommitteeID(id).Lazy(&c.HomeCommitteeID)
 	ds.User_ID(id).Lazy(&c.ID)
 	ds.User_IsActive(id).Lazy(&c.IsActive)
@@ -7252,6 +7266,18 @@ func (b *userBuilder) IsPresentInMeetingList() *meetingBuilder {
 			parent:   b,
 			idField:  "IsPresentInMeetingIDs",
 			relField: "IsPresentInMeetingList",
+			many:     true,
+		},
+	}
+}
+
+func (b *userBuilder) MeetingList() *meetingBuilder {
+	return &meetingBuilder{
+		builder: builder[meetingBuilder, *meetingBuilder, Meeting]{
+			fetch:    b.fetch,
+			parent:   b,
+			idField:  "MeetingIDs",
+			relField: "MeetingList",
 			many:     true,
 		},
 	}
