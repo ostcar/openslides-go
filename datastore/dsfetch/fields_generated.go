@@ -3952,6 +3952,15 @@ func (r *Fetch) Meeting_PollDefaultGroupIDs(meetingID int) *ValueIntSlice {
 	return &ValueIntSlice{fetch: r, key: key}
 }
 
+func (r *Fetch) Meeting_PollDefaultLiveVotingEnabled(meetingID int) *ValueBool {
+	key, err := dskey.FromParts("meeting", meetingID, "poll_default_live_voting_enabled")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
+}
+
 func (r *Fetch) Meeting_PollDefaultMethod(meetingID int) *ValueString {
 	key, err := dskey.FromParts("meeting", meetingID, "poll_default_method")
 	if err != nil {
@@ -6298,7 +6307,7 @@ func (r *Fetch) Poll_Visibility(pollID int) *ValueString {
 		return &ValueString{err: err}
 	}
 
-	return &ValueString{fetch: r, key: key, required: true}
+	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) Poll_VoteIDs(pollID int) *ValueIntSlice {
