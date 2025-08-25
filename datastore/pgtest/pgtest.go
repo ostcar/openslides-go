@@ -111,9 +111,8 @@ func (tp *PostgresTest) Close() error {
 // Conn returns a pgx connection to the postgres server.
 func (tp *PostgresTest) Conn(ctx context.Context) (*pgx.Conn, error) {
 	var conn *pgx.Conn
-
-	for {
-		var err error
+	var err error
+	for range 100 {
 		conn, err = pgx.ConnectConfig(ctx, tp.pgxConfig)
 		if err == nil {
 			return conn, nil
@@ -125,6 +124,7 @@ func (tp *PostgresTest) Conn(ctx context.Context) (*pgx.Conn, error) {
 			return nil, ctx.Err()
 		}
 	}
+	return nil, fmt.Errorf("getting connections 1000 times: %w", err)
 }
 
 func (tp *PostgresTest) addSchema(ctx context.Context) error {
@@ -159,6 +159,7 @@ func (tp *PostgresTest) AddData(ctx context.Context, data string) error {
 	if err != nil {
 		return fmt.Errorf("open connection: %w", err)
 	}
+	defer conn.Close(ctx)
 
 	if err := insertTestData(ctx, conn, data); err != nil {
 		return fmt.Errorf("insert data: %w", err)

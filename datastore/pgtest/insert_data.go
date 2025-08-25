@@ -78,9 +78,8 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 		buildUpdateClause(columns),
 	)
 
-	// Füge alle Zeilen zum Batch hinzu
 	for id, rowData := range rows {
-		values := make([]interface{}, len(columns))
+		values := make([]any, len(columns))
 
 		for i, column := range columns {
 			if column == "id" {
@@ -98,7 +97,7 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 	results := conn.SendBatch(ctx, batch)
 	defer results.Close()
 
-	for i := 0; i < len(rows); i++ {
+	for i := range rows {
 		_, err := results.Exec()
 		if err != nil {
 			return fmt.Errorf("failed to execute batch insert row %d: %w", i, err)
