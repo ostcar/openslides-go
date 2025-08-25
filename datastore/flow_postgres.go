@@ -90,18 +90,24 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 
 func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
 	collectionIDs := make(map[string][]int)
+	collectionFields := make(map[string][]string)
 	for _, key := range keys {
-		if slices.Contains(collectionIDs[key.Collection()], key.ID()) {
-			continue
+		if !slices.Contains(collectionIDs[key.Collection()], key.ID()) {
+			collectionIDs[key.Collection()] = append(collectionIDs[key.Collection()], key.ID())
 		}
 
-		collectionIDs[key.Collection()] = append(collectionIDs[key.Collection()], key.ID())
+		if key.Field() != "id" && !slices.Contains(collectionFields[key.Collection()], key.Field()) {
+			collectionFields[key.Collection()] = append(collectionFields[key.Collection()], key.Field())
+		}
 	}
 
 	keyValues := make(map[dskey.Key][]byte, len(keys))
 	for collection, ids := range collectionIDs {
-		// TODO: maybe only fetch id and requested keys
-		sql := fmt.Sprintf(`SELECT * FROM "%s" WHERE id = ANY ($1) `, collection)
+		sql := fmt.Sprintf(
+			`SELECT id, %s FROM "%s" WHERE id = ANY ($1) `,
+			strings.Join(collectionFields[collection], ","),
+			collection,
+		)
 
 		rows, err := conn.Query(ctx, sql, ids)
 		if err != nil {
