@@ -6271,7 +6271,7 @@ func (r *Fetch) Poll_Result(pollID int) *ValueJSON {
 		return &ValueJSON{err: err}
 	}
 
-	return &ValueJSON{fetch: r, key: key, required: true}
+	return &ValueJSON{fetch: r, key: key}
 }
 
 func (r *Fetch) Poll_SequentialNumber(pollID int) *ValueInt {

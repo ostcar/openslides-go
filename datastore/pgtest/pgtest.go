@@ -9,10 +9,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/OpenSlides/openslides-go/datastore"
+	"github.com/OpenSlides/openslides-go/environment"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/ory/dockertest/v3"
 )
+
+// Go embed can only include files inside the same directory or sub directories.
+// But for security reasons, it can not include files outside the directory.
+// Therefore it is necessary to copry the files to create the sql-schema to this
+// folder. The embedding is necessary, to other repositories like the
+// vote-service, do not need to include the meta-repo as a sub repo.
 
 //go:generate go run ./copy_sql
 
@@ -33,7 +41,7 @@ type PostgresTest struct {
 
 // NewPostgresTest creates a PostgresTest instance to test against a postgres
 // server in a docker container.
-func NewPostgresTest(ctx context.Context) (tp_ *PostgresTest, err error) {
+func NewPostgresTest(ctx context.Context) (*PostgresTest, error) {
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		return nil, fmt.Errorf("connect to docker: %w", err)
@@ -86,6 +94,10 @@ func NewPostgresTest(ctx context.Context) (tp_ *PostgresTest, err error) {
 		return nil, fmt.Errorf("add schema: %w", err)
 	}
 
+	if err := tp.addBaseData(ctx); err != nil {
+		return nil, fmt.Errorf("add base data: %w", err)
+	}
+
 	return tp, nil
 }
 
@@ -128,6 +140,41 @@ func (tp *PostgresTest) addSchema(ctx context.Context) error {
 	return nil
 }
 
+func (tp *PostgresTest) addBaseData(ctx context.Context) error {
+	conn, err := tp.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("creating connection: %w", err)
+	}
+
+	if _, err := conn.Exec(ctx, baseDataSQL); err != nil {
+		return fmt.Errorf("adding example data: %w", PrityPostgresError(err, baseDataSQL))
+	}
+
+	return nil
+}
+
+// AddData adds data in yaml-format to the database.
+func (tp *PostgresTest) AddData(ctx context.Context, data string) error {
+	conn, err := tp.Conn(ctx)
+	if err != nil {
+		return fmt.Errorf("open connection: %w", err)
+	}
+
+	if err := insertTestData(ctx, conn, data); err != nil {
+		return fmt.Errorf("insert data: %w", err)
+	}
+
+	return nil
+}
+
+func (tp *PostgresTest) Flow() (*datastore.FlowPostgres, error) {
+	flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
+	if err != nil {
+		return nil, fmt.Errorf("create postgres flow: %w", err)
+	}
+	return flow, nil
+}
+
 // Cleanup uses t.cleanup to register a cleanup function after the test is done.
 //
 // This can be used to reuse a PostgresTest without restarting the postgres
@@ -160,19 +207,6 @@ func (tp *PostgresTest) reset(ctx context.Context) error {
 
 	if err := tp.addSchema(ctx); err != nil {
 		return fmt.Errorf("adding schema: %w", err)
-	}
-
-	return nil
-}
-
-func (tp *PostgresTest) addBaseData(ctx context.Context) error {
-	conn, err := tp.Conn(ctx)
-	if err != nil {
-		return fmt.Errorf("creating connection: %w", err)
-	}
-
-	if _, err := conn.Exec(ctx, baseDataSQL); err != nil {
-		return fmt.Errorf("adding example data: %w", PrityPostgresError(err, baseDataSQL))
 	}
 
 	return nil
