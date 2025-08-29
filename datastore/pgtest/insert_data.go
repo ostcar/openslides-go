@@ -71,7 +71,7 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 	}
 
 	query := fmt.Sprintf(
-		"INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (id) DO UPDATE SET %s",
+		"INSERT INTO \"%s\" (%s) VALUES (%s) ON CONFLICT (id) DO UPDATE SET %s",
 		tableName,
 		strings.Join(columns, ", "),
 		strings.Join(placeholders, ", "),

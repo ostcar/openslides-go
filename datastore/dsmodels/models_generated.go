@@ -7167,7 +7167,7 @@ type Vote struct {
 	MeetingID         int
 	PollID            int
 	RepresentedUserID dsfetch.Maybe[int]
-	Value             json.RawMessage
+	Value             string
 	Weight            string
 	ActingUser        *dsfetch.Maybe[User]
 	Meeting           *Meeting

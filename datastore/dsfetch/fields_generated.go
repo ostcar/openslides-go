@@ -8110,13 +8110,13 @@ func (r *Fetch) Vote_RepresentedUserID(voteID int) *ValueMaybeInt {
 	return &ValueMaybeInt{fetch: r, key: key}
 }
 
-func (r *Fetch) Vote_Value(voteID int) *ValueJSON {
+func (r *Fetch) Vote_Value(voteID int) *ValueString {
 	key, err := dskey.FromParts("vote", voteID, "value")
 	if err != nil {
-		return &ValueJSON{err: err}
+		return &ValueString{err: err}
 	}
 
-	return &ValueJSON{fetch: r, key: key}
+	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) Vote_Weight(voteID int) *ValueString {

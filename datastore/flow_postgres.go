@@ -125,6 +125,12 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 				return fmt.Errorf("invalid id %s: %w", string(values[0]), err)
 			}
 
+			idKey, err := dskey.FromParts(collection, id, "id")
+			if err != nil {
+				return fmt.Errorf("invalid id-key for id %d: %w", id, err)
+			}
+			keyValues[idKey] = []byte(strconv.Itoa(id))
+
 			for i, value := range values {
 				field := row.FieldDescriptions()[i].Name
 				key, err := dskey.FromParts(collection, id, field)
