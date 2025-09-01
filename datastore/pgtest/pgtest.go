@@ -182,7 +182,11 @@ func (tp *PostgresTest) Flow() (*datastore.FlowPostgres, error) {
 // server.
 func (tp *PostgresTest) Cleanup(t *testing.T) {
 	t.Cleanup(func() {
-		if err := tp.reset(t.Context()); err != nil {
+		// Use context.Background instead of t.Context(). The Cleanup function
+		// is usually used in defer, where t.Context() is already canceled.
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		if err := tp.reset(ctx); err != nil {
 			t.Logf("Cleanup database: %v", err)
 		}
 	})

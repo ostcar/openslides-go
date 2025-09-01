@@ -103,6 +103,9 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 	keyValues := make(map[dskey.Key][]byte, len(keys))
 	for collection, ids := range collectionIDs {
+		// TODO: if collectionFields[collection] is empty (only id field
+		// requested), then the query is wrong. The comma behind id has to be
+		// deleted in this case.
 		sql := fmt.Sprintf(
 			`SELECT id, %s FROM "%s" WHERE id = ANY ($1) `,
 			strings.Join(collectionFields[collection], ","),
@@ -111,7 +114,7 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 		rows, err := conn.Query(ctx, sql, ids)
 		if err != nil {
-			return nil, fmt.Errorf("sending query for %s: %w", collection, err)
+			return nil, fmt.Errorf("sending query `%s`: %w", sql, err)
 		}
 
 		err = forEachRow(rows, func(row pgx.CollectableRow) error {

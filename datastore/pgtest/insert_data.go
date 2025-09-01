@@ -7,18 +7,33 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/OpenSlides/openslides-go/datastore/dskey"
 	"github.com/OpenSlides/openslides-go/datastore/dsmock"
+	"github.com/OpenSlides/openslides-go/fastjson"
+	"github.com/OpenSlides/openslides-go/metagen"
 	"github.com/jackc/pgx/v5"
 )
 
 func insertTestData(ctx context.Context, conn *pgx.Conn, testData string) error {
 	yml := dsmock.YAMLData(testData)
 	dataByTable := make(map[string]map[int]map[string]any)
+	var nmData []nmInfo
 
 	for key, jsonValue := range yml {
 		collection := key.Collection()
 		id := key.ID()
 		field := key.Field()
+
+		if strings.HasSuffix(metagen.RelationListFields[key.CollectionField()], "_ids") {
+			// nm-tale
+			nm, err := genNMInfo(key, jsonValue)
+			if err != nil {
+				return fmt.Errorf("generate NM info for %s/%d/%s: %w", collection, id, field, err)
+			}
+
+			nmData = append(nmData, nm)
+			continue
+		}
 
 		if dataByTable[collection] == nil {
 			dataByTable[collection] = make(map[int]map[string]any)
@@ -29,7 +44,7 @@ func insertTestData(ctx context.Context, conn *pgx.Conn, testData string) error 
 
 		var value any
 		if err := json.Unmarshal(jsonValue, &value); err != nil {
-			return fmt.Errorf("failed to unmarshal JSON for %s.%d.%s: %w", collection, id, field, err)
+			return fmt.Errorf("unmarshal JSON for %s/%d/%s: %w", collection, id, field, err)
 		}
 
 		dataByTable[collection][id][field] = value
@@ -37,7 +52,12 @@ func insertTestData(ctx context.Context, conn *pgx.Conn, testData string) error 
 
 	for tableName, rows := range dataByTable {
 		if err := insertRowsForTable(ctx, conn, tableName, rows); err != nil {
-			return fmt.Errorf("failed to insert data for table %s: %w", tableName, err)
+			return fmt.Errorf("insert data for table %s: %w", tableName, err)
+		}
+	}
+	for _, nm := range nmData {
+		if err := inserNMData(ctx, conn, nm); err != nil {
+			return fmt.Errorf("insert nm-data for %s: %w", nm.table, err)
 		}
 	}
 
@@ -51,20 +71,32 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 
 	columnSet := make(map[string]bool)
 	columnSet["id"] = true
-
 	for _, row := range rows {
 		for field := range row {
 			columnSet[field] = true
 		}
 	}
-
 	columns := make([]string, 0, len(columnSet))
 	for column := range columnSet {
 		columns = append(columns, column)
 	}
 	sort.Strings(columns)
 
-	batch := &pgx.Batch{}
+	if len(columns) == 1 {
+		// Only id field. Skip this
+		return nil
+	}
+
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("begin transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err = tx.Exec(ctx, "SET CONSTRAINTS ALL DEFERRED"); err != nil {
+		return fmt.Errorf("set constraints deferred: %w", err)
+	}
+
 	placeholders := make([]string, len(columns))
 	for i := range placeholders {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
@@ -80,7 +112,6 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 
 	for id, rowData := range rows {
 		values := make([]any, len(columns))
-
 		for i, column := range columns {
 			if column == "id" {
 				values[i] = id
@@ -91,17 +122,16 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 			}
 		}
 
-		batch.Queue(query, values...)
+		fmt.Println(query, values)
+
+		if _, err := tx.Exec(ctx, query, values...); err != nil {
+			return fmt.Errorf("execute insert for id %d: %w", id, err)
+		}
+
 	}
 
-	results := conn.SendBatch(ctx, batch)
-	defer results.Close()
-
-	for i := range rows {
-		_, err := results.Exec()
-		if err != nil {
-			return fmt.Errorf("failed to execute batch insert row %d: %w", i, err)
-		}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit transaction: %w", err)
 	}
 
 	return nil
@@ -115,4 +145,74 @@ func buildUpdateClause(columns []string) string {
 		}
 	}
 	return strings.Join(updates, ", ")
+}
+
+type nmInfo struct {
+	table string
+	id1   []int
+	id2   []int
+}
+
+func genNMInfo(key dskey.Key, value []byte) (nmInfo, error) {
+	cfs := make([]string, 2)
+	cfs[0] = key.CollectionField()
+	cfs[1] = metagen.RelationListFields[key.CollectionField()]
+	reverse := false
+	if cfs[0] > cfs[1] {
+		cfs[0], cfs[1] = cfs[1], cfs[0]
+		reverse = true
+	}
+
+	c1, f1 := splitCollectionName(cfs[0])
+	c2, _ := splitCollectionName(cfs[1])
+	nmTableName := fmt.Sprintf("nm_%s_%s_%s_t", c1, f1, c2)
+
+	otherIDs, err := fastjson.DecodeIntList(value)
+	if err != nil {
+		return nmInfo{}, fmt.Errorf("decode value: %w", err)
+	}
+
+	if reverse {
+		return nmInfo{
+			table: nmTableName,
+			id1:   otherIDs,
+			id2:   []int{key.ID()},
+		}, nil
+	}
+	return nmInfo{
+		table: nmTableName,
+		id1:   []int{key.ID()},
+		id2:   otherIDs,
+	}, nil
+}
+
+func splitCollectionName(cf string) (string, string) {
+	parts := strings.Split(cf, "/")
+	if len(parts) != 2 {
+		panic(fmt.Sprintf("invalid collection name %s", cf))
+	}
+	return parts[0], parts[1]
+}
+
+func inserNMData(ctx context.Context, conn *pgx.Conn, nm nmInfo) error {
+	batch := &pgx.Batch{}
+
+	for _, id1 := range nm.id1 {
+		for _, id2 := range nm.id2 {
+			query := fmt.Sprintf("INSERT INTO \"%s\" VALUES ($1, $2)", nm.table)
+			batch.Queue(query, id1, id2)
+		}
+	}
+
+	results := conn.SendBatch(ctx, batch)
+	defer results.Close()
+
+	for i := range len(nm.id1) * len(nm.id2) {
+		_, err := results.Exec()
+		if err != nil {
+			return fmt.Errorf("execute batch insert row %d: %w", i, err)
+		}
+	}
+
+	return nil
 }
