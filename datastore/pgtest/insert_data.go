@@ -50,43 +50,6 @@ func insertTestData(ctx context.Context, conn *pgx.Conn, testData string) error 
 		dataByTable[collection][id][field] = value
 	}
 
-	for tableName, rows := range dataByTable {
-		if err := insertRowsForTable(ctx, conn, tableName, rows); err != nil {
-			return fmt.Errorf("insert data for table %s: %w", tableName, err)
-		}
-	}
-	for _, nm := range nmData {
-		if err := inserNMData(ctx, conn, nm); err != nil {
-			return fmt.Errorf("insert nm-data for %s: %w", nm.table, err)
-		}
-	}
-
-	return nil
-}
-
-func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, rows map[int]map[string]any) error {
-	if len(rows) == 0 {
-		return nil
-	}
-
-	columnSet := make(map[string]bool)
-	columnSet["id"] = true
-	for _, row := range rows {
-		for field := range row {
-			columnSet[field] = true
-		}
-	}
-	columns := make([]string, 0, len(columnSet))
-	for column := range columnSet {
-		columns = append(columns, column)
-	}
-	sort.Strings(columns)
-
-	if len(columns) == 1 {
-		// Only id field. Skip this
-		return nil
-	}
-
 	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
@@ -97,41 +60,76 @@ func insertRowsForTable(ctx context.Context, conn *pgx.Conn, tableName string, r
 		return fmt.Errorf("set constraints deferred: %w", err)
 	}
 
-	placeholders := make([]string, len(columns))
-	for i := range placeholders {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
+	if err := insertData(ctx, tx, dataByTable); err != nil {
+		return fmt.Errorf("insert data: %w", err)
 	}
 
-	query := fmt.Sprintf(
-		"INSERT INTO \"%s\" (%s) VALUES (%s) ON CONFLICT (id) DO UPDATE SET %s",
-		tableName,
-		strings.Join(columns, ", "),
-		strings.Join(placeholders, ", "),
-		buildUpdateClause(columns),
-	)
-
-	for id, rowData := range rows {
-		values := make([]any, len(columns))
-		for i, column := range columns {
-			if column == "id" {
-				values[i] = id
-			} else if value, exists := rowData[column]; exists {
-				values[i] = value
-			} else {
-				values[i] = nil
-			}
+	for _, nm := range nmData {
+		if err := inserNMData(ctx, tx, nm); err != nil {
+			return fmt.Errorf("insert nm-data for %s: %w", nm.table, err)
 		}
-
-		fmt.Println(query, values)
-
-		if _, err := tx.Exec(ctx, query, values...); err != nil {
-			return fmt.Errorf("execute insert for id %d: %w", id, err)
-		}
-
 	}
 
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit transaction: %w", err)
+	}
+
+	return nil
+}
+
+func insertData(ctx context.Context, tx pgx.Tx, dataByTable map[string]map[int]map[string]any) error {
+	for tableName, rows := range dataByTable {
+		if len(rows) == 0 {
+			continue
+		}
+
+		columnSet := make(map[string]bool)
+		columnSet["id"] = true
+		for _, row := range rows {
+			for field := range row {
+				columnSet[field] = true
+			}
+		}
+		columns := make([]string, 0, len(columnSet))
+		for column := range columnSet {
+			columns = append(columns, column)
+		}
+		sort.Strings(columns)
+
+		if len(columns) == 1 {
+			// Only id field. Skip this
+			continue
+		}
+
+		placeholders := make([]string, len(columns))
+		for i := range placeholders {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		}
+
+		query := fmt.Sprintf(
+			"INSERT INTO \"%s\" (%s) VALUES (%s) ON CONFLICT (id) DO UPDATE SET %s",
+			tableName,
+			strings.Join(columns, ", "),
+			strings.Join(placeholders, ", "),
+			buildUpdateClause(columns),
+		)
+
+		for id, rowData := range rows {
+			values := make([]any, len(columns))
+			for i, column := range columns {
+				if column == "id" {
+					values[i] = id
+				} else if value, exists := rowData[column]; exists {
+					values[i] = value
+				} else {
+					values[i] = nil
+				}
+			}
+
+			if _, err := tx.Exec(ctx, query, values...); err != nil {
+				return fmt.Errorf("execute insert for id %d: %w", id, err)
+			}
+		}
 	}
 
 	return nil
@@ -194,7 +192,7 @@ func splitCollectionName(cf string) (string, string) {
 	return parts[0], parts[1]
 }
 
-func inserNMData(ctx context.Context, conn *pgx.Conn, nm nmInfo) error {
+func inserNMData(ctx context.Context, tx pgx.Tx, nm nmInfo) error {
 	batch := &pgx.Batch{}
 
 	for _, id1 := range nm.id1 {
@@ -204,7 +202,7 @@ func inserNMData(ctx context.Context, conn *pgx.Conn, nm nmInfo) error {
 		}
 	}
 
-	results := conn.SendBatch(ctx, batch)
+	results := tx.SendBatch(ctx, batch)
 	defer results.Close()
 
 	for i := range len(nm.id1) * len(nm.id2) {
