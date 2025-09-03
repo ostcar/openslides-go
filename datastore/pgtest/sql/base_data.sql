@@ -21,12 +21,15 @@ COMMIT;
 INSERT INTO organization_tag_t (id,name,color)
     VALUES (2,'bunt','#ffffff');
 INSERT INTO gm_organization_tag_tagged_ids_t(organization_tag_id,tagged_id)
-    VALUES(2,'meeting/1');
+    VALUES(2,'meeting/1'); 
 
 INSERT INTO topic_t (id,title, sequential_number, meeting_id)
     VALUES (1, 'Thema3', 1, 1);
 INSERT INTO agenda_item_t (content_object_id, meeting_id)
     VALUES ('topic/1',1);--agenda_item.content_object_id:topic.agenda_item_id gr:r
+
+INSERT INTO option_t (id,content_object_id,meeting_id)
+    VALUES (1, 'user/1', 1);--rl:gr user.option_id:option.content_object_id
 
 INSERT INTO nm_committee_manager_ids_user_t
     VALUES (1,1); --rl:rl committee_ids:user_ids
@@ -158,7 +161,7 @@ BEGIN;
             'do_not_merge'
         );
 
-    INSERT INTO projector_t (id,sequential_number,meeting_id)
+    INSERT INTO projector_t (id,sequential_number,meeting_id) 
         VALUES (2,2,1);
 
 COMMIT;
