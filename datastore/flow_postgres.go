@@ -1,6 +1,7 @@
 package datastore
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -150,7 +151,7 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 				if err != nil {
 					return fmt.Errorf("convert value for field %s/%s: %w", collection, field, err)
 				}
-				keyValues[key] = converted
+				keyValues[key] = bytes.Clone(converted)
 			}
 
 			return nil
