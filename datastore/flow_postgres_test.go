@@ -91,11 +91,18 @@ func TestFlowPostgres(t *testing.T) {
 		},
 		{
 			"Float",
-			`
-			INSERT INTO "projector_countdown" (title, countdown_time, meeting_id) values ('test countdown', 7.5, 1);
-			`,
+			`INSERT INTO "projector_countdown" (title, countdown_time, meeting_id) VALUES ('test countdown', 7.5, 1);`,
 			map[string][]byte{
 				"projector_countdown/1/countdown_time": []byte(`7.5`),
+			},
+		},
+		{
+			"String list",
+			`
+			INSERT INTO history_entry (entries) VALUES ('{"entry1","entry2"}');
+			`,
+			map[string][]byte{
+				"history_entry/1/entries": []byte(`["entry1","entry2"]`),
 			},
 		},
 	} {
