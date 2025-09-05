@@ -2,7 +2,7 @@ package pgtest
 
 import (
 	"context"
-	_ "embed"
+	_ "embed" // Needed for embedding
 	"errors"
 	"fmt"
 	"log"
@@ -30,6 +30,10 @@ var schemaSQL string
 //go:embed sql/base_data.sql
 var baseDataSQL string
 
+// PostgresTest is a test helper for postgres.
+//
+// It creates a postgres instance in a docker container. Can be used with
+// flow_postgres.
 type PostgresTest struct {
 	dockerPool     *dockertest.Pool
 	dockerResource *dockertest.Resource
@@ -101,6 +105,7 @@ func NewPostgresTest(ctx context.Context) (*PostgresTest, error) {
 	return tp, nil
 }
 
+// Close closes the postgres instance by removing the postgres container.
 func (tp *PostgresTest) Close() error {
 	if err := tp.dockerPool.Purge(tp.dockerResource); err != nil {
 		return fmt.Errorf("purge postgres container: %w", err)
@@ -168,6 +173,7 @@ func (tp *PostgresTest) AddData(ctx context.Context, data string) error {
 	return nil
 }
 
+// Flow returns a flow that is using the postgres instance.
 func (tp *PostgresTest) Flow() (*datastore.FlowPostgres, error) {
 	flow, err := datastore.NewFlowPostgres(environment.ForTests(tp.Env))
 	if err != nil {
@@ -214,9 +220,14 @@ func (tp *PostgresTest) reset(ctx context.Context) error {
 		return fmt.Errorf("adding schema: %w", err)
 	}
 
+	if err := tp.addBaseData(ctx); err != nil {
+		return fmt.Errorf("adding base data: %w", err)
+	}
+
 	return nil
 }
 
+// PrityPostgresError returns a formatted error message for PostgreSQL errors.
 func PrityPostgresError(err error, sql string) error {
 	var errPG *pgconn.PgError
 	if errors.As(err, &errPG) {
@@ -225,7 +236,7 @@ func PrityPostgresError(err error, sql string) error {
 		contextEnd := min(len(sql), int(errPG.Position)+100)
 		context := sql[contextStart:contextEnd]
 
-		return fmt.Errorf("PostgreSQL error at line %d, byte position %d: %s\nContext: ...%s...",
+		return fmt.Errorf("postgreSQL error at line %d, byte position %d: %s\nContext: %s",
 			line, int(errPG.Position), errPG.Message, context)
 	}
 	return err

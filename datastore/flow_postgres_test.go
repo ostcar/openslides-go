@@ -34,9 +34,7 @@ func TestFlowPostgres(t *testing.T) {
 	}{
 		{
 			"Same fqid",
-			`
-			INSERT INTO theme (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
-			`,
+			``,
 			map[string][]byte{
 				"theme/1/name": []byte(`"standard theme"`),
 			},
@@ -44,7 +42,6 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"different fqid",
 			`
-			INSERT INTO theme (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
 			INSERT INTO "user" (id, username, first_name) values (42,'hugo', 'Hugo');
 			`,
 			map[string][]byte{
@@ -80,21 +77,25 @@ func TestFlowPostgres(t *testing.T) {
 		},
 		{
 			"Boolean",
-			`
-			INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
-			INSERT INTO organization (id, name, default_language, theme_id, enable_electronic_voting) VALUES (1, 'my orga', 'en', 1, true);
-			`,
+			`UPDATE organization SET enable_electronic_voting=true WHERE id = 1`,
 			map[string][]byte{
 				"organization/1/enable_electronic_voting": []byte(`true`),
 			},
 		},
 		{
 			"Timestamp",
-			`
-			INSERT INTO "user" (username, last_login) values ('hugo', '1999-01-08');
-			`,
+			`UPDATE "user" set last_login='1999-01-08' WHERE id=1;`,
 			map[string][]byte{
 				"user/1/last_login": []byte(`915753600`),
+			},
+		},
+		{
+			"Float",
+			`
+			INSERT INTO "projector_countdown" (title, countdown_time, meeting_id) values ('test countdown', 7.5, 1);
+			`,
+			map[string][]byte{
+				"projector_countdown/1/countdown_time": []byte(`7.5`),
 			},
 		},
 	} {

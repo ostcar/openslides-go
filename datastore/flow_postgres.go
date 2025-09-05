@@ -189,7 +189,7 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 	case PSQLTypeVarChar, PSQLTypeText:
 		return json.Marshal(string(value))
 
-	case PSQLTypeInt, PSQLTypeJSON:
+	case PSQLTypeInt, PSQLTypeJSON, PSQLTypeFloat:
 		return value, nil
 
 	case PSQLTypeIntList:
@@ -203,8 +203,8 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 		}
 		return []byte("false"), nil
 
-	case PSQLTypeDecimal, PSQLTypeFloat:
-		return []byte(fmt.Sprintf(`"%s"`, value)), nil
+	case PSQLTypeDecimal:
+		return fmt.Appendf([]byte{}, `"%s"`, value), nil
 
 	case PSQLTypeTimestamp:
 		timeValue, err := time.Parse("2006-01-02 15:04:05-07", string(value))
