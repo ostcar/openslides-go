@@ -285,7 +285,12 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 			allKeys = append(allKeys, keys...)
 		}
 
-		updateFn(getWithConn(ctx, conn.Conn(), allKeys...))
+		values, err := getWithConn(ctx, conn.Conn(), allKeys...)
+		if err != nil {
+			updateFn(nil, fmt.Errorf("fetching keys %v: %w", allKeys, err))
+		}
+
+		updateFn(values, nil)
 	}
 }
 

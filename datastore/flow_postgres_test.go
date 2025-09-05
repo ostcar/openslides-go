@@ -174,8 +174,8 @@ func TestPostgresUpdate(t *testing.T) {
 	}
 
 	keys := []dskey.Key{
-		dskey.MustKey("user/1/username"),
-		dskey.MustKey("theme/1/name"),
+		dskey.MustKey("user/300/username"),
+		dskey.MustKey("theme/300/name"),
 	}
 
 	done := make(chan error)
@@ -210,8 +210,8 @@ func TestPostgresUpdate(t *testing.T) {
 	// TODO: This test could be flaky.
 	time.Sleep(5 * time.Second) // TODO: How to do this without a sleep?
 	sql := `
-	INSERT INTO "user" (id, username) values (1,'hugo');
-	INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+	INSERT INTO "user" (id, username) VALUES (300,'hugo');
+	INSERT INTO theme (id, name) VALUES (300,'standard theme');
 	`
 	if _, err := conn.Exec(ctx, sql); err != nil {
 		t.Fatalf("adding example data: %v", err)
@@ -251,12 +251,12 @@ func TestBigQuery(t *testing.T) {
 	keys := make([]dskey.Key, count)
 	expected := make(map[dskey.Key][]byte)
 	for i := range count {
-		keys[i], _ = dskey.FromParts("user", 1, "username")
+		keys[i], _ = dskey.FromParts("user", i+2, "username")
 		expected[keys[i]] = []byte(`"hugo"`)
 
 		sql := `INSERT INTO "user" (username) values ('hugo');`
 		if _, err := conn.Exec(ctx, sql); err != nil {
-			t.Fatalf("adding user %d: %v", i+1, err)
+			t.Fatalf("adding user %d: %v", i+2, err)
 		}
 	}
 
@@ -266,6 +266,6 @@ func TestBigQuery(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("got != expected: %v, %v", got[keys[0]], expected[keys[0]])
+		t.Errorf("got != expected: %s, %s", got[keys[0]], expected[keys[0]])
 	}
 }
