@@ -173,14 +173,16 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 func convertValue(value []byte, oid uint32) ([]byte, error) {
 	const (
-		PSQLTypeVarChar   = 1043
-		PSQLTypeInt       = 23
-		PSQLTypeBool      = 16
-		PSQLTypeText      = 25
-		PSQLTypeIntList   = 1007
-		PSQLTypeTimestamp = 1184
-		PSQLTypeDecimal   = 1700
-		PSQLTypeJSON      = 3802
+		PSQLTypeVarChar     = 1043
+		PSQLTypeInt         = 23
+		PSQLTypeBool        = 16
+		PSQLTypeText        = 25
+		PSQLTypeIntList     = 1007
+		PSQLTypeTimestamp   = 1184
+		PSQLTypeDecimal     = 1700
+		PSQLTypeJSON        = 3802
+		PSQLTypeVarCharList = 1015
+		PSQLTypeFloat       = 701
 	)
 
 	switch oid {
@@ -201,7 +203,7 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 		}
 		return []byte("false"), nil
 
-	case PSQLTypeDecimal:
+	case PSQLTypeDecimal, PSQLTypeFloat:
 		return []byte(fmt.Sprintf(`"%s"`, value)), nil
 
 	case PSQLTypeTimestamp:
@@ -211,6 +213,11 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 		}
 
 		return []byte(strconv.Itoa(int(timeValue.Unix()))), nil
+
+	case PSQLTypeVarCharList:
+		strValue := strings.Trim(string(value), "{}")
+		strArray := strings.Split(strValue, ",")
+		return json.Marshal(strArray)
 
 	default:
 		return nil, fmt.Errorf("unsupported postgres type %d", oid)
