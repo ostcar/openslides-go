@@ -34,9 +34,7 @@ func TestFlowPostgres(t *testing.T) {
 	}{
 		{
 			"Same fqid",
-			`
-			INSERT INTO theme (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
-			`,
+			``,
 			map[string][]byte{
 				"theme/1/name": []byte(`"standard theme"`),
 			},
@@ -44,7 +42,6 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"different fqid",
 			`
-			INSERT INTO theme (name, accent_500, primary_500, warn_500) values ('standard theme', '#123456', '#123456', '#123456');
 			INSERT INTO "user" (id, username, first_name) values (42,'hugo', 'Hugo');
 			`,
 			map[string][]byte{
@@ -80,21 +77,32 @@ func TestFlowPostgres(t *testing.T) {
 		},
 		{
 			"Boolean",
-			`
-			INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
-			INSERT INTO organization (id, name, default_language, theme_id, enable_electronic_voting) VALUES (1, 'my orga', 'en', 1, true);
-			`,
+			`UPDATE organization SET enable_electronic_voting=true WHERE id = 1`,
 			map[string][]byte{
 				"organization/1/enable_electronic_voting": []byte(`true`),
 			},
 		},
 		{
 			"Timestamp",
-			`
-			INSERT INTO "user" (username, last_login) values ('hugo', '1999-01-08');
-			`,
+			`UPDATE "user" set last_login='1999-01-08' WHERE id=1;`,
 			map[string][]byte{
 				"user/1/last_login": []byte(`915753600`),
+			},
+		},
+		{
+			"Float",
+			`INSERT INTO "projector_countdown" (title, countdown_time, meeting_id) VALUES ('test countdown', 7.5, 1);`,
+			map[string][]byte{
+				"projector_countdown/1/countdown_time": []byte(`7.5`),
+			},
+		},
+		{
+			"String list",
+			`
+			INSERT INTO history_entry (entries) VALUES ('{"entry1","entry2"}');
+			`,
+			map[string][]byte{
+				"history_entry/1/entries": []byte(`["entry1","entry2"]`),
 			},
 		},
 	} {
@@ -166,8 +174,8 @@ func TestPostgresUpdate(t *testing.T) {
 	}
 
 	keys := []dskey.Key{
-		dskey.MustKey("user/1/username"),
-		dskey.MustKey("theme/1/name"),
+		dskey.MustKey("user/300/username"),
+		dskey.MustKey("theme/300/name"),
 	}
 
 	done := make(chan error)
@@ -202,8 +210,8 @@ func TestPostgresUpdate(t *testing.T) {
 	// TODO: This test could be flaky.
 	time.Sleep(5 * time.Second) // TODO: How to do this without a sleep?
 	sql := `
-	INSERT INTO "user" (id, username) values (1,'hugo');
-	INSERT INTO theme (name, accent_500, primary_500, warn_500) VALUES ('standard theme', '#123456', '#123456', '#123456');
+	INSERT INTO "user" (id, username) VALUES (300,'hugo');
+	INSERT INTO theme (id, name) VALUES (300,'standard theme');
 	`
 	if _, err := conn.Exec(ctx, sql); err != nil {
 		t.Fatalf("adding example data: %v", err)
@@ -243,12 +251,12 @@ func TestBigQuery(t *testing.T) {
 	keys := make([]dskey.Key, count)
 	expected := make(map[dskey.Key][]byte)
 	for i := range count {
-		keys[i], _ = dskey.FromParts("user", 1, "username")
+		keys[i], _ = dskey.FromParts("user", i+2, "username")
 		expected[keys[i]] = []byte(`"hugo"`)
 
 		sql := `INSERT INTO "user" (username) values ('hugo');`
 		if _, err := conn.Exec(ctx, sql); err != nil {
-			t.Fatalf("adding user %d: %v", i+1, err)
+			t.Fatalf("adding user %d: %v", i+2, err)
 		}
 	}
 
@@ -258,6 +266,6 @@ func TestBigQuery(t *testing.T) {
 	}
 
 	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("got != expected: %v, %v", got[keys[0]], expected[keys[0]])
+		t.Errorf("got != expected: %s, %s", got[keys[0]], expected[keys[0]])
 	}
 }

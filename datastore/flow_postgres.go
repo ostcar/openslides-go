@@ -173,21 +173,23 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 func convertValue(value []byte, oid uint32) ([]byte, error) {
 	const (
-		PSQLTypeVarChar   = 1043
-		PSQLTypeInt       = 23
-		PSQLTypeBool      = 16
-		PSQLTypeText      = 25
-		PSQLTypeIntList   = 1007
-		PSQLTypeTimestamp = 1184
-		PSQLTypeDecimal   = 1700
-		PSQLTypeJSON      = 3802
+		PSQLTypeVarChar     = 1043
+		PSQLTypeInt         = 23
+		PSQLTypeBool        = 16
+		PSQLTypeText        = 25
+		PSQLTypeIntList     = 1007
+		PSQLTypeTimestamp   = 1184
+		PSQLTypeDecimal     = 1700
+		PSQLTypeJSON        = 3802
+		PSQLTypeVarCharList = 1015
+		PSQLTypeFloat       = 701
 	)
 
 	switch oid {
 	case PSQLTypeVarChar, PSQLTypeText:
 		return json.Marshal(string(value))
 
-	case PSQLTypeInt, PSQLTypeJSON:
+	case PSQLTypeInt, PSQLTypeJSON, PSQLTypeFloat:
 		return value, nil
 
 	case PSQLTypeIntList:
@@ -202,7 +204,7 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 		return []byte("false"), nil
 
 	case PSQLTypeDecimal:
-		return []byte(fmt.Sprintf(`"%s"`, value)), nil
+		return fmt.Appendf([]byte{}, `"%s"`, value), nil
 
 	case PSQLTypeTimestamp:
 		timeValue, err := time.Parse("2006-01-02 15:04:05-07", string(value))
@@ -211,6 +213,11 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 		}
 
 		return []byte(strconv.Itoa(int(timeValue.Unix()))), nil
+
+	case PSQLTypeVarCharList:
+		strValue := strings.Trim(string(value), "{}")
+		strArray := strings.Split(strValue, ",")
+		return json.Marshal(strArray)
 
 	default:
 		return nil, fmt.Errorf("unsupported postgres type %d", oid)
@@ -278,7 +285,12 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 			allKeys = append(allKeys, keys...)
 		}
 
-		updateFn(getWithConn(ctx, conn.Conn(), allKeys...))
+		values, err := getWithConn(ctx, conn.Conn(), allKeys...)
+		if err != nil {
+			updateFn(nil, fmt.Errorf("fetching keys %v: %w", allKeys, err))
+		}
+
+		updateFn(values, nil)
 	}
 }
 
