@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/OpenSlides/openslides-go/datastore/dskey"
@@ -25,7 +24,6 @@ func insertTestData(ctx context.Context, conn *pgx.Conn, testData string) error 
 		field := key.Field()
 
 		if strings.HasSuffix(metagen.RelationListFields[key.CollectionField()], "_ids") {
-			// nm-tale
 			nm, err := genNMInfo(key, jsonValue)
 			if err != nil {
 				return fmt.Errorf("generate NM info for %s/%d/%s: %w", collection, id, field, err)
@@ -83,66 +81,75 @@ func insertData(ctx context.Context, tx pgx.Tx, dataByTable map[string]map[int]m
 			continue
 		}
 
-		columnSet := make(map[string]bool)
-		columnSet["id"] = true
-		for _, row := range rows {
-			for field := range row {
-				columnSet[field] = true
-			}
-		}
-		columns := make([]string, 0, len(columnSet))
-		for column := range columnSet {
-			columns = append(columns, column)
-		}
-		sort.Strings(columns)
-
-		if len(columns) == 1 {
-			// Only id field. Skip this
-			continue
-		}
-
-		placeholders := make([]string, len(columns))
-		for i := range placeholders {
-			placeholders[i] = fmt.Sprintf("$%d", i+1)
-		}
-
-		query := fmt.Sprintf(
-			"INSERT INTO \"%s\" (%s) VALUES (%s) ON CONFLICT (id) DO UPDATE SET %s",
-			tableName,
-			strings.Join(columns, ", "),
-			strings.Join(placeholders, ", "),
-			buildUpdateClause(columns),
-		)
-
 		for id, rowData := range rows {
-			values := make([]any, len(columns))
-			for i, column := range columns {
-				if column == "id" {
-					values[i] = id
-				} else if value, exists := rowData[column]; exists {
-					values[i] = value
-				} else {
-					values[i] = nil
-				}
+			if len(rowData) == 0 {
+				continue
 			}
 
-			if _, err := tx.Exec(ctx, query, values...); err != nil {
-				return fmt.Errorf("execute insert for id %d: %w", id, err)
+			var exists bool
+			checkQuery := fmt.Sprintf("SELECT EXISTS(SELECT 1 FROM \"%s\" WHERE id = $1)", tableName)
+			if err := tx.QueryRow(ctx, checkQuery, id).Scan(&exists); err != nil {
+				return fmt.Errorf("check existence for table %s, id %d: %w", tableName, id, err)
+			}
+
+			if exists {
+				if len(rowData) > 0 {
+					updateFields := make([]string, 0, len(rowData))
+					updateValues := make([]any, 0, len(rowData)+1)
+
+					fieldIndex := 1
+					for field, value := range rowData {
+						updateFields = append(updateFields, fmt.Sprintf("%s = $%d", field, fieldIndex))
+						updateValues = append(updateValues, value)
+						fieldIndex++
+					}
+
+					updateValues = append(updateValues, id)
+
+					updateQuery := fmt.Sprintf(
+						"UPDATE \"%s\" SET %s WHERE id = $%d",
+						tableName,
+						strings.Join(updateFields, ", "),
+						fieldIndex,
+					)
+
+					if _, err := tx.Exec(ctx, updateQuery, updateValues...); err != nil {
+						return fmt.Errorf("execute update for table %s, id %d: %w", tableName, id, err)
+					}
+				}
+				continue
+			}
+
+			fields := make([]string, 0, len(rowData)+1)
+			values := make([]any, 0, len(rowData)+1)
+			placeholders := make([]string, 0, len(rowData)+1)
+
+			if _, hasID := rowData["id"]; !hasID {
+				fields = append(fields, "id")
+				values = append(values, id)
+				placeholders = append(placeholders, "$1")
+			}
+
+			for field, value := range rowData {
+				fields = append(fields, field)
+				values = append(values, value)
+				placeholders = append(placeholders, fmt.Sprintf("$%d", len(values)))
+			}
+
+			insertQuery := fmt.Sprintf(
+				"INSERT INTO \"%s\" (%s) VALUES (%s)",
+				tableName,
+				strings.Join(fields, ", "),
+				strings.Join(placeholders, ", "),
+			)
+
+			if _, err := tx.Exec(ctx, insertQuery, values...); err != nil {
+				return fmt.Errorf("execute insert for table %s, id %d: %w", tableName, id, err)
 			}
 		}
 	}
 
 	return nil
-}
-
-func buildUpdateClause(columns []string) string {
-	var updates []string
-	for _, column := range columns {
-		if column != "id" {
-			updates = append(updates, fmt.Sprintf("%s = EXCLUDED.%s", column, column))
-		}
-	}
-	return strings.Join(updates, ", ")
 }
 
 type nmInfo struct {
