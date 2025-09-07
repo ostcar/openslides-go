@@ -5633,7 +5633,7 @@ func (r *Fetch) PointOfOrderCategory(ids ...int) *pointOfOrderCategoryBuilder {
 
 // Poll has all fields from poll.
 type Poll struct {
-	Config            json.RawMessage
+	Config            string
 	ContentObjectID   string
 	Description       string
 	EntitledGroupIDs  []int
@@ -5641,7 +5641,7 @@ type Poll struct {
 	MeetingID         int
 	Method            string
 	ProjectionIDs     []int
-	Result            json.RawMessage
+	Result            string
 	SequentialNumber  int
 	State             string
 	Title             string

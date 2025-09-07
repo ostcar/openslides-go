@@ -1,7 +1,7 @@
 
 -- schema_relational.sql for initial database setup OpenSlides
 -- Code generated. DO NOT EDIT.
--- MODELS_YML_CHECKSUM = 'd4572548fd951b4cc8303d8d26e68e64'
+-- MODELS_YML_CHECKSUM = '06ffcb50123dd1f730ade66d92b05580'
 
 
 -- Database parameters
@@ -916,10 +916,10 @@ CREATE TABLE poll_t (
     title varchar(256) NOT NULL,
     description text,
     method varchar(256) NOT NULL CONSTRAINT enum_poll_method CHECK (method IN ('motion', 'selection', 'rating', 'single_transferable_vote')),
-    config jsonb,
+    config text,
     visibility varchar(256) CONSTRAINT enum_poll_visibility CHECK (visibility IN ('manually', 'named', 'open', 'secret')),
     state varchar(256) CONSTRAINT enum_poll_state CHECK (state IN ('created', 'started', 'finished', 'published')) DEFAULT 'created',
-    result jsonb,
+    result text,
     sequential_number integer NOT NULL,
     content_object_id varchar(100) NOT NULL,
     content_object_id_motion_id integer GENERATED ALWAYS AS (CASE WHEN split_part(content_object_id, '/', 1) = 'motion' THEN cast(split_part(content_object_id, '/', 2) AS INTEGER) ELSE null END) STORED,

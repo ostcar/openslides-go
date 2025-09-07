@@ -6319,13 +6319,13 @@ func (r *Fetch) PollCandidate_Weight(pollCandidateID int) *ValueInt {
 	return &ValueInt{fetch: r, key: key, required: true}
 }
 
-func (r *Fetch) Poll_Config(pollID int) *ValueJSON {
+func (r *Fetch) Poll_Config(pollID int) *ValueString {
 	key, err := dskey.FromParts("poll", pollID, "config")
 	if err != nil {
-		return &ValueJSON{err: err}
+		return &ValueString{err: err}
 	}
 
-	return &ValueJSON{fetch: r, key: key}
+	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) Poll_ContentObjectID(pollID int) *ValueString {
@@ -6391,13 +6391,13 @@ func (r *Fetch) Poll_ProjectionIDs(pollID int) *ValueIntSlice {
 	return &ValueIntSlice{fetch: r, key: key}
 }
 
-func (r *Fetch) Poll_Result(pollID int) *ValueJSON {
+func (r *Fetch) Poll_Result(pollID int) *ValueString {
 	key, err := dskey.FromParts("poll", pollID, "result")
 	if err != nil {
-		return &ValueJSON{err: err}
+		return &ValueString{err: err}
 	}
 
-	return &ValueJSON{fetch: r, key: key}
+	return &ValueString{fetch: r, key: key}
 }
 
 func (r *Fetch) Poll_SequentialNumber(pollID int) *ValueInt {
