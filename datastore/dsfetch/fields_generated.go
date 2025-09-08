@@ -6364,6 +6364,15 @@ func (r *Fetch) Poll_ID(pollID int) *ValueInt {
 	return &ValueInt{fetch: r, key: key, required: true}
 }
 
+func (r *Fetch) Poll_LiveVotingEnabled(pollID int) *ValueBool {
+	key, err := dskey.FromParts("poll", pollID, "live_voting_enabled")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
+}
+
 func (r *Fetch) Poll_MeetingID(pollID int) *ValueInt {
 	key, err := dskey.FromParts("poll", pollID, "meeting_id")
 	if err != nil {

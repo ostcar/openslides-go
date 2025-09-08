@@ -1,7 +1,7 @@
 
 -- schema_relational.sql for initial database setup OpenSlides
 -- Code generated. DO NOT EDIT.
--- MODELS_YML_CHECKSUM = '06ffcb50123dd1f730ade66d92b05580'
+-- MODELS_YML_CHECKSUM = '48abcaec341feb06556ec8e9d5552229'
 
 
 -- Database parameters
@@ -920,6 +920,7 @@ CREATE TABLE poll_t (
     visibility varchar(256) CONSTRAINT enum_poll_visibility CHECK (visibility IN ('manually', 'named', 'open', 'secret')),
     state varchar(256) CONSTRAINT enum_poll_state CHECK (state IN ('created', 'started', 'finished', 'published')) DEFAULT 'created',
     result text,
+    live_voting_enabled boolean DEFAULT False,
     sequential_number integer NOT NULL,
     content_object_id varchar(100) NOT NULL,
     content_object_id_motion_id integer GENERATED ALWAYS AS (CASE WHEN split_part(content_object_id, '/', 1) = 'motion' THEN cast(split_part(content_object_id, '/', 2) AS INTEGER) ELSE null END) STORED,
@@ -932,7 +933,8 @@ CREATE TABLE poll_t (
 
 
 comment on column poll_t.config is 'Values to configure the poll. Depends on the value in poll/method.';
-comment on column poll_t.result is 'Calculated result. The format depends on the value in poll/method';
+comment on column poll_t.result is 'Calculated result. The format depends on the value in poll/method. Can be manually set when visibility is set to manually.';
+comment on column poll_t.live_voting_enabled is 'If true, the vote service sends the votes of the users to the autoupdate service.';
 comment on column poll_t.sequential_number is 'The (positive) serial number of this model in its meeting. This number is auto-generated and read-only.';
 
 
