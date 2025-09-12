@@ -3,6 +3,8 @@ INSERT INTO
 theme_t (id, name)
 VALUES
 (1, 'standard theme');
+-- Increase sequence of theme_t.id to avoid errors.
+SELECT nextval('theme_t_id_seq');
 
 INSERT INTO
 organization_t (name, theme_id)
@@ -13,6 +15,9 @@ INSERT INTO
 committee_t (id, name)
 VALUES
 (1, 'committee');
+-- Increase sequence of committee_t.id to avoid errors.
+SELECT nextval('committee_t_id_seq');
+
 
 BEGIN;
 INSERT INTO
@@ -28,6 +33,8 @@ meeting_t (
 )
 VALUES
 (1, 1, 2, 1, 1, 1, 1, 'meeting');
+-- Increase sequence of committee_t.id to avoid errors.
+SELECT nextval('meeting_t_id_seq');
 
 INSERT INTO
 group_t (id, name, meeting_id, permissions)
@@ -46,6 +53,8 @@ VALUES
 }'
 ),
 (2, 'Admin', 1, DEFAULT);
+-- Set sequence of group_t.id to avoid errors.
+SELECT setval('group_t_id_seq', 2);
 
 INSERT INTO
 motion_workflow_t (
@@ -57,6 +66,8 @@ motion_workflow_t (
 )
 VALUES
 (1, 'Simple Workflow', 1, 1, 1);
+-- Increase sequence of motion_workflow_t.id to avoid errors.
+SELECT nextval('motion_workflow_t_id_seq');
 
 INSERT INTO
 motion_state_t (
@@ -125,8 +136,12 @@ VALUES
     'grey',
     'do_not_merge'
 );
+-- Set sequence of motion_state_t.id to avoid errors.
+SELECT setval('motion_state_t_id_seq', 4);
+
 
 INSERT INTO projector_t (id, sequential_number, meeting_id)
 VALUES (1, 1, 1);
+SELECT nextval('projector_t_id_seq');
 
 COMMIT;

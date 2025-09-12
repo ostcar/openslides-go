@@ -34,7 +34,7 @@ var collectionFields = map[string][]string{
 	"organization_tag":                 {"color", "id", "name", "organization_id", "tagged_ids"},
 	"personal_note":                    {"content_object_id", "id", "meeting_id", "meeting_user_id", "note", "star"},
 	"point_of_order_category":          {"id", "meeting_id", "rank", "speaker_ids", "text"},
-	"poll":                             {"config", "content_object_id", "description", "entitled_group_ids", "id", "live_voting_enabled", "meeting_id", "method", "projection_ids", "result", "sequential_number", "state", "title", "visibility", "vote_ids", "voted_ids"},
+	"poll":                             {"config", "content_object_id", "entitled_group_ids", "id", "live_voting_enabled", "meeting_id", "method", "projection_ids", "result", "sequential_number", "state", "title", "visibility", "vote_ids", "voted_ids"},
 	"poll_candidate":                   {"id", "meeting_id", "poll_candidate_list_id", "user_id", "weight"},
 	"poll_candidate_list":              {"id", "meeting_id", "poll_candidate_ids"},
 	"projection":                       {"content", "content_object_id", "current_projector_id", "history_projector_id", "id", "meeting_id", "options", "preview_projector_id", "stable", "type", "weight"},

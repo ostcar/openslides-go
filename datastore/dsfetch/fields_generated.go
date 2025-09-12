@@ -6337,15 +6337,6 @@ func (r *Fetch) Poll_ContentObjectID(pollID int) *ValueString {
 	return &ValueString{fetch: r, key: key, required: true}
 }
 
-func (r *Fetch) Poll_Description(pollID int) *ValueString {
-	key, err := dskey.FromParts("poll", pollID, "description")
-	if err != nil {
-		return &ValueString{err: err}
-	}
-
-	return &ValueString{fetch: r, key: key}
-}
-
 func (r *Fetch) Poll_EntitledGroupIDs(pollID int) *ValueIntSlice {
 	key, err := dskey.FromParts("poll", pollID, "entitled_group_ids")
 	if err != nil {
@@ -6442,7 +6433,7 @@ func (r *Fetch) Poll_Visibility(pollID int) *ValueString {
 		return &ValueString{err: err}
 	}
 
-	return &ValueString{fetch: r, key: key}
+	return &ValueString{fetch: r, key: key, required: true}
 }
 
 func (r *Fetch) Poll_VoteIDs(pollID int) *ValueIntSlice {

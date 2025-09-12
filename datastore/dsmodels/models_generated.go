@@ -5635,7 +5635,6 @@ func (r *Fetch) PointOfOrderCategory(ids ...int) *pointOfOrderCategoryBuilder {
 type Poll struct {
 	Config            string
 	ContentObjectID   string
-	Description       string
 	EntitledGroupIDs  []int
 	ID                int
 	LiveVotingEnabled bool
@@ -5664,7 +5663,6 @@ func (b *pollBuilder) lazy(ds *Fetch, id int) *Poll {
 	c := Poll{}
 	ds.Poll_Config(id).Lazy(&c.Config)
 	ds.Poll_ContentObjectID(id).Lazy(&c.ContentObjectID)
-	ds.Poll_Description(id).Lazy(&c.Description)
 	ds.Poll_EntitledGroupIDs(id).Lazy(&c.EntitledGroupIDs)
 	ds.Poll_ID(id).Lazy(&c.ID)
 	ds.Poll_LiveVotingEnabled(id).Lazy(&c.LiveVotingEnabled)

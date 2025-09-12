@@ -1083,7 +1083,6 @@ var RestrictionModes = map[string]string{
 	// poll
 	"poll/config":              "A",
 	"poll/content_object_id":   "A",
-	"poll/description":         "A",
 	"poll/entitled_group_ids":  "A",
 	"poll/id":                  "A",
 	"poll/live_voting_enabled": "A",
