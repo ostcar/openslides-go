@@ -684,10 +684,10 @@ var collectionFields = [...]collectionField{
 	{"poll", "content_object_id"},
 	{"poll", "entitled_group_ids"},
 	{"poll", "id"},
-	{"poll", "live_voting_enabled"},
 	{"poll", "meeting_id"},
 	{"poll", "method"},
 	{"poll", "projection_ids"},
+	{"poll", "published"},
 	{"poll", "result"},
 	{"poll", "sequential_number"},
 	{"poll", "state"},
@@ -919,6 +919,7 @@ var collectionFields = [...]collectionField{
 	{"user", "title"},
 	{"user", "username"},
 	{"vote", "A"},
+	{"vote", "B"},
 	{"vote", "acting_user_id"},
 	{"vote", "id"},
 	{"vote", "meeting_id"},
@@ -2292,13 +2293,13 @@ func collectionFieldToID(cf string) int {
 		return 680
 	case "poll/id":
 		return 681
-	case "poll/live_voting_enabled":
-		return 682
 	case "poll/meeting_id":
-		return 683
+		return 682
 	case "poll/method":
-		return 684
+		return 683
 	case "poll/projection_ids":
+		return 684
+	case "poll/published":
 		return 685
 	case "poll/result":
 		return 686
@@ -2762,20 +2763,22 @@ func collectionFieldToID(cf string) int {
 		return 915
 	case "vote/A":
 		return 916
-	case "vote/acting_user_id":
+	case "vote/B":
 		return 917
-	case "vote/id":
+	case "vote/acting_user_id":
 		return 918
-	case "vote/meeting_id":
+	case "vote/id":
 		return 919
-	case "vote/poll_id":
+	case "vote/meeting_id":
 		return 920
-	case "vote/represented_user_id":
+	case "vote/poll_id":
 		return 921
-	case "vote/value":
+	case "vote/represented_user_id":
 		return 922
-	case "vote/weight":
+	case "vote/value":
 		return 923
+	case "vote/weight":
+		return 924
 	default:
 		return -1
 	}

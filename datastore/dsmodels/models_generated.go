@@ -5637,10 +5637,10 @@ type Poll struct {
 	ContentObjectID   string
 	EntitledGroupIDs  []int
 	ID                int
-	LiveVotingEnabled bool
 	MeetingID         int
 	Method            string
 	ProjectionIDs     []int
+	Published         bool
 	Result            string
 	SequentialNumber  int
 	State             string
@@ -5665,10 +5665,10 @@ func (b *pollBuilder) lazy(ds *Fetch, id int) *Poll {
 	ds.Poll_ContentObjectID(id).Lazy(&c.ContentObjectID)
 	ds.Poll_EntitledGroupIDs(id).Lazy(&c.EntitledGroupIDs)
 	ds.Poll_ID(id).Lazy(&c.ID)
-	ds.Poll_LiveVotingEnabled(id).Lazy(&c.LiveVotingEnabled)
 	ds.Poll_MeetingID(id).Lazy(&c.MeetingID)
 	ds.Poll_Method(id).Lazy(&c.Method)
 	ds.Poll_ProjectionIDs(id).Lazy(&c.ProjectionIDs)
+	ds.Poll_Published(id).Lazy(&c.Published)
 	ds.Poll_Result(id).Lazy(&c.Result)
 	ds.Poll_SequentialNumber(id).Lazy(&c.SequentialNumber)
 	ds.Poll_State(id).Lazy(&c.State)
