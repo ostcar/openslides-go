@@ -1699,7 +1699,7 @@ type Meeting struct {
 	PollCandidateListIDs                         []int
 	PollCountdownID                              dsfetch.Maybe[int]
 	PollCoupleCountdown                          bool
-	PollDefaultBackend                           string
+	PollDefaultAllowInvalid                      bool
 	PollDefaultGroupIDs                          []int
 	PollDefaultLiveVotingEnabled                 bool
 	PollDefaultMethod                            string
@@ -2036,7 +2036,7 @@ func (b *meetingBuilder) lazy(ds *Fetch, id int) *Meeting {
 	ds.Meeting_PollCandidateListIDs(id).Lazy(&c.PollCandidateListIDs)
 	ds.Meeting_PollCountdownID(id).Lazy(&c.PollCountdownID)
 	ds.Meeting_PollCoupleCountdown(id).Lazy(&c.PollCoupleCountdown)
-	ds.Meeting_PollDefaultBackend(id).Lazy(&c.PollDefaultBackend)
+	ds.Meeting_PollDefaultAllowInvalid(id).Lazy(&c.PollDefaultAllowInvalid)
 	ds.Meeting_PollDefaultGroupIDs(id).Lazy(&c.PollDefaultGroupIDs)
 	ds.Meeting_PollDefaultLiveVotingEnabled(id).Lazy(&c.PollDefaultLiveVotingEnabled)
 	ds.Meeting_PollDefaultMethod(id).Lazy(&c.PollDefaultMethod)
@@ -5633,6 +5633,7 @@ func (r *Fetch) PointOfOrderCategory(ids ...int) *pointOfOrderCategoryBuilder {
 
 // Poll has all fields from poll.
 type Poll struct {
+	AllowInvalid      bool
 	Config            string
 	ContentObjectID   string
 	EntitledGroupIDs  []int
@@ -5661,6 +5662,7 @@ type pollBuilder struct {
 
 func (b *pollBuilder) lazy(ds *Fetch, id int) *Poll {
 	c := Poll{}
+	ds.Poll_AllowInvalid(id).Lazy(&c.AllowInvalid)
 	ds.Poll_Config(id).Lazy(&c.Config)
 	ds.Poll_ContentObjectID(id).Lazy(&c.ContentObjectID)
 	ds.Poll_EntitledGroupIDs(id).Lazy(&c.EntitledGroupIDs)

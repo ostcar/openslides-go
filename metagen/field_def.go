@@ -730,7 +730,7 @@ var RestrictionModes = map[string]string{
 	"meeting/poll_candidate_list_ids":                               "B",
 	"meeting/poll_countdown_id":                                     "B",
 	"meeting/poll_couple_countdown":                                 "B",
-	"meeting/poll_default_backend":                                  "B",
+	"meeting/poll_default_allow_invalid":                            "B",
 	"meeting/poll_default_group_ids":                                "B",
 	"meeting/poll_default_live_voting_enabled":                      "B",
 	"meeting/poll_default_method":                                   "B",
@@ -1081,6 +1081,7 @@ var RestrictionModes = map[string]string{
 	"point_of_order_category/text":        "A",
 
 	// poll
+	"poll/allow_invalid":      "A",
 	"poll/config":             "A",
 	"poll/content_object_id":  "A",
 	"poll/entitled_group_ids": "A",

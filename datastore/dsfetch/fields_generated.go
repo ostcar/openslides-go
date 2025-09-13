@@ -4042,13 +4042,13 @@ func (r *Fetch) Meeting_PollCoupleCountdown(meetingID int) *ValueBool {
 	return &ValueBool{fetch: r, key: key}
 }
 
-func (r *Fetch) Meeting_PollDefaultBackend(meetingID int) *ValueString {
-	key, err := dskey.FromParts("meeting", meetingID, "poll_default_backend")
+func (r *Fetch) Meeting_PollDefaultAllowInvalid(meetingID int) *ValueBool {
+	key, err := dskey.FromParts("meeting", meetingID, "poll_default_allow_invalid")
 	if err != nil {
-		return &ValueString{err: err}
+		return &ValueBool{err: err}
 	}
 
-	return &ValueString{fetch: r, key: key}
+	return &ValueBool{fetch: r, key: key}
 }
 
 func (r *Fetch) Meeting_PollDefaultGroupIDs(meetingID int) *ValueIntSlice {
@@ -6317,6 +6317,15 @@ func (r *Fetch) PollCandidate_Weight(pollCandidateID int) *ValueInt {
 	}
 
 	return &ValueInt{fetch: r, key: key, required: true}
+}
+
+func (r *Fetch) Poll_AllowInvalid(pollID int) *ValueBool {
+	key, err := dskey.FromParts("poll", pollID, "allow_invalid")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
 }
 
 func (r *Fetch) Poll_Config(pollID int) *ValueString {
