@@ -18,6 +18,8 @@ VALUES
 -- Increase sequence of committee_t.id to avoid errors.
 SELECT nextval('committee_t_id_seq');
 
+INSERT INTO gender_t (name) VALUES ('female');
+
 
 BEGIN;
 INSERT INTO

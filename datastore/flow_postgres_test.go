@@ -84,7 +84,7 @@ func TestFlowPostgres(t *testing.T) {
 		},
 		{
 			"Timestamp",
-			`UPDATE "user" set last_login='1999-01-08' WHERE id=1;`,
+			`INSERT INTO "user" (username, gender_id, last_login) VALUES ('tom', 1, '1999-01-08');`,
 			map[string][]byte{
 				"user/1/last_login": []byte(`915753600`),
 			},
@@ -99,7 +99,8 @@ func TestFlowPostgres(t *testing.T) {
 		{
 			"String list",
 			`
-			INSERT INTO history_entry (entries) VALUES ('{"entry1","entry2"}');
+			INSERT INTO history_position DEFAULT VALUES;
+			INSERT INTO history_entry (entries, position_id) VALUES ('{"entry1","entry2"}', 1);
 			`,
 			map[string][]byte{
 				"history_entry/1/entries": []byte(`["entry1","entry2"]`),
@@ -254,7 +255,7 @@ func TestBigQuery(t *testing.T) {
 		keys[i], _ = dskey.FromParts("user", i+2, "username")
 		expected[keys[i]] = []byte(`"hugo"`)
 
-		sql := `INSERT INTO "user" (username) values ('hugo');`
+		sql := fmt.Sprintf(`INSERT INTO "user" (id, username) values (%d, 'hugo');`, i+2)
 		if _, err := conn.Exec(ctx, sql); err != nil {
 			t.Fatalf("adding user %d: %v", i+2, err)
 		}
@@ -265,7 +266,13 @@ func TestBigQuery(t *testing.T) {
 		t.Errorf("Sending request with %d fields returns: %v", count, err)
 	}
 
-	if !reflect.DeepEqual(got, expected) {
-		t.Errorf("got != expected: %s, %s", got[keys[0]], expected[keys[0]])
+	if len(got) != len(expected) {
+		t.Errorf("len(got) == %d, len(expected) == %d", len(got), len(expected))
+	}
+
+	for key, value := range got {
+		if string(value) != string(expected[key]) {
+			t.Errorf("got[%s] == %s, expected %s", key, value, expected[key])
+		}
 	}
 }

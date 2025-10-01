@@ -312,7 +312,6 @@ func forEachRow(rows pgx.Rows, fn func(row pgx.CollectableRow) error) error {
 	defer rows.Close()
 
 	for rows.Next() {
-
 		if err := fn(rows); err != nil {
 			return err
 		}
