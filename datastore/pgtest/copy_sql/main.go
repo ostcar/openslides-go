@@ -5,7 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
+	"path"
 )
 
 func main() {
@@ -22,35 +22,17 @@ func run() error {
 		return fmt.Errorf("creating destination directory: %w", err)
 	}
 
-	err := filepath.Walk(sourceDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
+	baseDataSrc := path.Join(sourceDir, "base_data.sql")
+	schamaSrc := path.Join(sourceDir, "schema_relational.sql")
+	baseDataDest := path.Join(destDir, "base_data.sql")
+	schamaDest := path.Join(destDir, "schema_relational.sql")
 
-		if info.IsDir() {
-			return nil
-		}
+	if err := copyFile(baseDataSrc, baseDataDest); err != nil {
+		return fmt.Errorf("copying file %s to %s: %w", baseDataSrc, destDir, err)
+	}
 
-		if filepath.Ext(path) != ".sql" {
-			return nil
-		}
-
-		relPath, err := filepath.Rel(sourceDir, path)
-		if err != nil {
-			return fmt.Errorf("calculating relative path: %w", err)
-		}
-
-		destPath := filepath.Join(destDir, relPath)
-
-		if err := copyFile(path, destPath); err != nil {
-			return fmt.Errorf("copying file %s to %s: %w", path, destPath, err)
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		return fmt.Errorf("walking source directory: %w", err)
+	if err := copyFile(schamaSrc, schamaDest); err != nil {
+		return fmt.Errorf("copying file %s to %s: %w", schamaSrc, destDir, err)
 	}
 
 	return nil

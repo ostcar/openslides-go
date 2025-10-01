@@ -1,7 +1,7 @@
 
 -- schema_relational.sql for initial database setup OpenSlides
 -- Code generated. DO NOT EDIT.
--- MODELS_YML_CHECKSUM = '4963952911d7dec30826436bcf2d56f2'
+-- MODELS_YML_CHECKSUM = 'cc31a7aa72f26043a892bcef4ce3c0ad'
 
 
 -- Database parameters
@@ -18,46 +18,6 @@ SET log_min_messages TO WARNING;
 -- Function and meta table definitions
 
 CREATE EXTENSION hstore;  -- included in standard postgres-installations, check for alpine
-
-CREATE FUNCTION check_not_null_for_relation_lists() RETURNS trigger as $not_null_trigger$
--- usage with 3 parameters IN TRIGGER DEFINITION:
--- table_name of field to check, usually a field in a view
--- column_name of field to check
--- foreign_key field name of triggered table, that will be used to SELECT the values to check the not null.
-DECLARE
-    table_name TEXT;
-    column_name TEXT;
-    foreign_key TEXT;
-    foreign_id INTEGER;
-    counted INTEGER;
-begin
-    table_name = TG_ARGV[0];
-    column_name = TG_ARGV[1];
-    foreign_key = TG_ARGV[2];
-
-    IF (TG_OP = 'INSERT') THEN
-        foreign_id := hstore(NEW) -> foreign_key;
-        IF (foreign_id is NOT NULL) THEN
-            foreign_id = NULL; -- no need to ask DB
-        END IF;
-    ELSIF (TG_OP = 'UPDATE') THEN
-        foreign_id := hstore(NEW) -> foreign_key;
-        IF (foreign_id is NULL) THEN
-            foreign_id = OLD.used_as_default_projector_for_topic_in_meeting_id;
-        END IF;
-    ELSIF (TG_OP = 'DELETE') THEN
-        foreign_id := hstore(OLD) -> foreign_key;
-    END IF;
-
-    IF (foreign_id IS NOT NULL) THEN
-        EXECUTE format('SELECT array_length(%I, 1) FROM %I where id = %s', column_name, table_name, foreign_id) INTO counted;
-        IF (counted is NULL) THEN
-            RAISE EXCEPTION 'Trigger % Exception: NOT NULL CONSTRAINT VIOLATED for %.%', TG_NAME, table_name, column_name;
-        END IF;
-    END IF;
-    RETURN NULL;  -- AFTER TRIGGER needs no return
-end;
-$not_null_trigger$ language plpgsql;
 
 CREATE FUNCTION log_modified_models() RETURNS trigger AS $log_modified_trigger$
 DECLARE
@@ -173,6 +133,86 @@ CREATE TABLE os_notify_log_t (
     CONSTRAINT unique_fqid_xact_id_operation UNIQUE (operation,fqid,xact_id)
 );
 
+CREATE FUNCTION check_not_null_for_1_1() RETURNS trigger as $not_null_trigger$
+-- usage with 3 parameters IN TRIGGER DEFINITION:
+-- table_name: relation to check, usually a view
+-- column_name: field to check, usually a field in a view
+-- foreign_key: field name of triggered table, that will be used to SELECT
+-- the values to check the not null. Can be empty on INSERT as then unused.
+DECLARE
+    table_name TEXT := TG_ARGV[0];
+    column_name TEXT := TG_ARGV[1];
+    foreign_key TEXT := TG_ARGV[2];
+    foreign_id INTEGER;
+    counted INTEGER;
+    error_message TEXT;
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        -- in case of INSERT the view is checked on itself so the own id is applicable
+        foreign_id := NEW.id;
+    ELSIF TG_OP IN ('UPDATE', 'DELETE') THEN
+        foreign_id := hstore(OLD) -> foreign_key;
+        EXECUTE format('SELECT 1 FROM %I WHERE "id" = %L', table_name, foreign_id) INTO counted;
+        IF (counted IS NULL) THEN
+            -- if the earlier referenced row was deleted (in the same transaction) we can quit.
+            RETURN NULL;
+        END IF;
+    END IF;
+
+    IF (foreign_id IS NOT NULL) THEN
+        EXECUTE format('SELECT %I FROM %I WHERE id = %s', column_name, table_name, foreign_id) INTO counted;
+        IF (counted is NULL) THEN
+            error_message := format('Trigger %s: NOT NULL CONSTRAINT VIOLATED for %s/%s/%s', TG_NAME, table_name, foreign_id, column_name);
+            IF TG_OP IN ('UPDATE', 'DELETE') THEN
+                error_message := error_message || format(' from relationship before %s/%s', OLD.id, foreign_key);
+            END IF;
+            RAISE EXCEPTION '%', error_message;
+        END IF;
+    END IF;
+    RETURN NULL;  -- AFTER TRIGGER needs no return
+END;
+$not_null_trigger$ language plpgsql;
+
+CREATE FUNCTION check_not_null_for_relation_lists() RETURNS trigger as $not_null_trigger$
+-- usage with 3 parameters IN TRIGGER DEFINITION:
+-- table_name: relation to check, usually a view
+-- column_name: field to check, usually a field in a view
+-- foreign_key: field name of triggered table, that will be used to SELECT
+-- the values to check the not null. Can be empty on INSERT as then unused.
+DECLARE
+    table_name TEXT := TG_ARGV[0];
+    column_name TEXT := TG_ARGV[1];
+    foreign_key TEXT := TG_ARGV[2];
+    foreign_id INTEGER;
+    counted INTEGER;
+    error_message TEXT;
+BEGIN
+    IF (TG_OP = 'INSERT') THEN
+        -- in case of INSERT the view is checked on itself so the own id is applicable
+        foreign_id := NEW.id;
+    ELSIF TG_OP IN ('UPDATE', 'DELETE') THEN
+        foreign_id := hstore(OLD) -> foreign_key;
+        EXECUTE format('SELECT 1 FROM %I WHERE "id" = %L', table_name, foreign_id) INTO counted;
+        IF (counted IS NULL) THEN
+            -- if the earlier referenced row was deleted (in the same transaction) we can quit.
+            RETURN NULL;
+        END IF;
+    END IF;
+
+    IF (foreign_id IS NOT NULL) THEN
+        EXECUTE format('SELECT array_length(%I, 1) FROM %I WHERE id = %s', column_name, table_name, foreign_id) INTO counted;
+        IF (counted is NULL) THEN
+            error_message := format('Trigger %s: NOT NULL CONSTRAINT VIOLATED for %s/%s/%s', TG_NAME, table_name, foreign_id, column_name);
+            IF TG_OP IN ('UPDATE', 'DELETE') THEN
+                error_message := error_message || format(' from relationship before %s/%s', OLD.id, foreign_key);
+            END IF;
+            RAISE EXCEPTION '%', error_message;
+        END IF;
+    END IF;
+    RETURN NULL;  -- AFTER TRIGGER needs no return
+END;
+$not_null_trigger$ language plpgsql;
+
 
 -- Type definitions
 
@@ -200,6 +240,7 @@ CREATE TABLE organization_t (
     saml_metadata_idp text,
     saml_metadata_sp text,
     saml_private_key text,
+    vote_decrypt_public_main_key varchar(256),
     theme_id integer NOT NULL UNIQUE,
     users_email_sender varchar(256) DEFAULT 'OpenSlides',
     users_email_replyto varchar(256),
@@ -221,13 +262,8 @@ This email was generated automatically.',
 
 comment on column organization_t.limit_of_meetings is 'Maximum of active meetings for the whole organization. 0 means no limitation at all';
 comment on column organization_t.limit_of_users is 'Maximum of active users for the whole organization. 0 means no limitation at all';
+comment on column organization_t.vote_decrypt_public_main_key is 'Public key from vote decrypt to validate cryptographic votes.';
 
-/*
- Fields without SQL definition for table organization
-
-    organization/vote_decrypt_public_main_key: type:string is marked as a calculated field and not generated in schema
-
-*/
 
 CREATE TABLE user_t (
     id integer PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -938,6 +974,7 @@ CREATE TABLE poll_t (
     votescast decimal(16,6),
     entitled_users_at_stop jsonb,
     live_voting_enabled boolean DEFAULT False,
+    live_votes jsonb,
     sequential_number integer NOT NULL,
     crypt_key varchar(256),
     crypt_signature varchar(256),
@@ -955,18 +992,13 @@ CREATE TABLE poll_t (
 
 
 comment on column poll_t.live_voting_enabled is 'If true, the vote service sends the votes of the users to the autoupdate service.';
+comment on column poll_t.live_votes is 'dict from user to their vote. The value is null, when live voting is disabled.';
 comment on column poll_t.sequential_number is 'The (positive) serial number of this model in its meeting. This number is auto-generated and read-only.';
 comment on column poll_t.crypt_key is 'base64 public key to cryptographic votes.';
 comment on column poll_t.crypt_signature is 'base64 signature of cryptographic_key.';
 comment on column poll_t.votes_raw is 'original form of decrypted votes.';
 comment on column poll_t.votes_signature is 'base64 signature of votes_raw field.';
 
-/*
- Fields without SQL definition for table poll
-
-    poll/live_votes: type:JSON is marked as a calculated field and not generated in schema
-
-*/
 
 CREATE TABLE option_t (
     id integer PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -1136,6 +1168,7 @@ CREATE TABLE projection_t (
     stable boolean DEFAULT False,
     weight integer,
     type varchar(256),
+    content jsonb,
     current_projector_id integer,
     preview_projector_id integer,
     history_projector_id integer,
@@ -1157,12 +1190,6 @@ CREATE TABLE projection_t (
 
 
 
-/*
- Fields without SQL definition for table projection
-
-    projection/content: type:JSON is marked as a calculated field and not generated in schema
-
-*/
 
 CREATE TABLE projector_message_t (
     id integer PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY NOT NULL,
@@ -1237,7 +1264,8 @@ CREATE TABLE import_preview_t (
 CREATE TABLE history_position_t (
     id integer PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY NOT NULL,
     timestamp timestamptz,
-    original_user_id integer
+    original_user_id integer,
+    user_id integer
 );
 
 
@@ -1246,7 +1274,14 @@ CREATE TABLE history_position_t (
 CREATE TABLE history_entry_t (
     id integer PRIMARY KEY GENERATED BY DEFAULT AS IDENTITY NOT NULL,
     entries varchar(256)[],
-    original_model_id varchar(256)
+    original_model_id varchar(256),
+    model_id varchar(100),
+    model_id_user_id integer GENERATED ALWAYS AS (CASE WHEN split_part(model_id, '/', 1) = 'user' THEN cast(split_part(model_id, '/', 2) AS INTEGER) ELSE null END) STORED,
+    model_id_motion_id integer GENERATED ALWAYS AS (CASE WHEN split_part(model_id, '/', 1) = 'motion' THEN cast(split_part(model_id, '/', 2) AS INTEGER) ELSE null END) STORED,
+    model_id_assignment_id integer GENERATED ALWAYS AS (CASE WHEN split_part(model_id, '/', 1) = 'assignment' THEN cast(split_part(model_id, '/', 2) AS INTEGER) ELSE null END) STORED,
+    CONSTRAINT valid_model_id_part1 CHECK (split_part(model_id, '/', 1) IN ('user','motion','assignment')),
+    position_id integer NOT NULL,
+    meeting_id integer
 );
 
 
@@ -1464,6 +1499,8 @@ CREATE VIEW "user" AS SELECT *,
 (select array_agg(v.id ORDER BY v.id) from vote_t v where v.user_id = u.id) as vote_ids,
 (select array_agg(v.id ORDER BY v.id) from vote_t v where v.delegated_user_id = u.id) as delegated_vote_ids,
 (select array_agg(p.id ORDER BY p.id) from poll_candidate_t p where p.user_id = u.id) as poll_candidate_ids,
+(select array_agg(h.id ORDER BY h.id) from history_position_t h where h.user_id = u.id) as history_position_ids,
+(select array_agg(h.id ORDER BY h.id) from history_entry_t h where h.model_id_user_id = u.id) as history_entry_ids,
 (
   SELECT array_agg(DISTINCT mu.meeting_id ORDER BY mu.meeting_id)
   FROM meeting_user_t mu
@@ -1611,7 +1648,8 @@ CREATE VIEW "meeting" AS SELECT *,
 (select array_agg(p.id ORDER BY p.id) from projector_t p where p.used_as_default_projector_for_countdown_in_meeting_id = m.id) as default_projector_countdown_ids,
 (select array_agg(p.id ORDER BY p.id) from projector_t p where p.used_as_default_projector_for_assignment_poll_in_meeting_id = m.id) as default_projector_assignment_poll_ids,
 (select array_agg(p.id ORDER BY p.id) from projector_t p where p.used_as_default_projector_for_motion_poll_in_meeting_id = m.id) as default_projector_motion_poll_ids,
-(select array_agg(p.id ORDER BY p.id) from projector_t p where p.used_as_default_projector_for_poll_in_meeting_id = m.id) as default_projector_poll_ids
+(select array_agg(p.id ORDER BY p.id) from projector_t p where p.used_as_default_projector_for_poll_in_meeting_id = m.id) as default_projector_poll_ids,
+(select array_agg(h.id ORDER BY h.id) from history_entry_t h where h.meeting_id = m.id) as relevant_history_entry_ids
 FROM meeting_t m;
 
 comment on column "meeting_t".is_active_in_organization_id is 'Backrelation and boolean flag at once';
@@ -1708,7 +1746,8 @@ CREATE VIEW "motion" AS SELECT *,
 (select array_agg(g.tag_id ORDER BY g.tag_id) from gm_tag_tagged_ids_t g where g.tagged_id_motion_id = m.id) as tag_ids,
 (select array_agg(g.meeting_mediafile_id ORDER BY g.meeting_mediafile_id) from gm_meeting_mediafile_attachment_ids_t g where g.attachment_id_motion_id = m.id) as attachment_meeting_mediafile_ids,
 (select array_agg(p.id ORDER BY p.id) from projection_t p where p.content_object_id_motion_id = m.id) as projection_ids,
-(select array_agg(p.id ORDER BY p.id) from personal_note_t p where p.content_object_id_motion_id = m.id) as personal_note_ids
+(select array_agg(p.id ORDER BY p.id) from personal_note_t p where p.content_object_id_motion_id = m.id) as personal_note_ids,
+(select array_agg(h.id ORDER BY h.id) from history_entry_t h where h.model_id_motion_id = m.id) as history_entry_ids
 FROM motion_t m;
 
 
@@ -1789,7 +1828,8 @@ CREATE VIEW "assignment" AS SELECT *,
 (select l.id from list_of_speakers_t l where l.content_object_id_assignment_id = a.id) as list_of_speakers_id,
 (select array_agg(g.tag_id ORDER BY g.tag_id) from gm_tag_tagged_ids_t g where g.tagged_id_assignment_id = a.id) as tag_ids,
 (select array_agg(g.meeting_mediafile_id ORDER BY g.meeting_mediafile_id) from gm_meeting_mediafile_attachment_ids_t g where g.attachment_id_assignment_id = a.id) as attachment_meeting_mediafile_ids,
-(select array_agg(p.id ORDER BY p.id) from projection_t p where p.content_object_id_assignment_id = a.id) as projection_ids
+(select array_agg(p.id ORDER BY p.id) from projection_t p where p.content_object_id_assignment_id = a.id) as projection_ids,
+(select array_agg(h.id ORDER BY h.id) from history_entry_t h where h.model_id_assignment_id = a.id) as history_entry_ids
 FROM assignment_t a;
 
 
@@ -1876,7 +1916,9 @@ CREATE VIEW "action_worker" AS SELECT * FROM action_worker_t a;
 CREATE VIEW "import_preview" AS SELECT * FROM import_preview_t i;
 
 
-CREATE VIEW "history_position" AS SELECT * FROM history_position_t h;
+CREATE VIEW "history_position" AS SELECT *,
+(select array_agg(he.id ORDER BY he.id) from history_entry_t he where he.position_id = h.id) as entry_ids
+FROM history_position_t h;
 
 
 CREATE VIEW "history_entry" AS SELECT * FROM history_entry_t h;
@@ -2089,119 +2131,177 @@ ALTER TABLE chat_message_t ADD FOREIGN KEY(meeting_user_id) REFERENCES meeting_u
 ALTER TABLE chat_message_t ADD FOREIGN KEY(chat_group_id) REFERENCES chat_group_t(id) INITIALLY DEFERRED;
 ALTER TABLE chat_message_t ADD FOREIGN KEY(meeting_id) REFERENCES meeting_t(id) INITIALLY DEFERRED;
 
+ALTER TABLE history_position_t ADD FOREIGN KEY(user_id) REFERENCES user_t(id) INITIALLY DEFERRED;
+
+ALTER TABLE history_entry_t ADD FOREIGN KEY(model_id_user_id) REFERENCES user_t(id) INITIALLY DEFERRED;
+ALTER TABLE history_entry_t ADD FOREIGN KEY(model_id_motion_id) REFERENCES motion_t(id) INITIALLY DEFERRED;
+ALTER TABLE history_entry_t ADD FOREIGN KEY(model_id_assignment_id) REFERENCES assignment_t(id) INITIALLY DEFERRED;
+ALTER TABLE history_entry_t ADD FOREIGN KEY(position_id) REFERENCES history_position_t(id) INITIALLY DEFERRED;
+ALTER TABLE history_entry_t ADD FOREIGN KEY(meeting_id) REFERENCES meeting_t(id) INITIALLY DEFERRED;
+
+
+
+-- Create triggers checking foreign_id not null for view-relations and no duplicates in 1:1 relationships
+
+-- definition trigger not null for topic.agenda_item_id against agenda_item.content_object_id_topic_id
+CREATE CONSTRAINT TRIGGER tr_i_topic_agenda_item_id AFTER INSERT ON topic_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('topic', 'agenda_item_id', '');
+
+CREATE CONSTRAINT TRIGGER tr_ud_topic_agenda_item_id AFTER UPDATE OF content_object_id_topic_id OR DELETE ON agenda_item_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('topic', 'agenda_item_id', 'content_object_id_topic_id');
+
+-- definition trigger not null for topic.list_of_speakers_id against list_of_speakers.content_object_id_topic_id
+CREATE CONSTRAINT TRIGGER tr_i_topic_list_of_speakers_id AFTER INSERT ON topic_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('topic', 'list_of_speakers_id', '');
+
+CREATE CONSTRAINT TRIGGER tr_ud_topic_list_of_speakers_id AFTER UPDATE OF content_object_id_topic_id OR DELETE ON list_of_speakers_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('topic', 'list_of_speakers_id', 'content_object_id_topic_id');
+
+
+-- definition trigger not null for motion.list_of_speakers_id against list_of_speakers.content_object_id_motion_id
+CREATE CONSTRAINT TRIGGER tr_i_motion_list_of_speakers_id AFTER INSERT ON motion_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('motion', 'list_of_speakers_id', '');
+
+CREATE CONSTRAINT TRIGGER tr_ud_motion_list_of_speakers_id AFTER UPDATE OF content_object_id_motion_id OR DELETE ON list_of_speakers_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('motion', 'list_of_speakers_id', 'content_object_id_motion_id');
+
+
+-- definition trigger not null for motion_block.list_of_speakers_id against list_of_speakers.content_object_id_motion_block_id
+CREATE CONSTRAINT TRIGGER tr_i_motion_block_list_of_speakers_id AFTER INSERT ON motion_block_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('motion_block', 'list_of_speakers_id', '');
+
+CREATE CONSTRAINT TRIGGER tr_ud_motion_block_list_of_speakers_id AFTER UPDATE OF content_object_id_motion_block_id OR DELETE ON list_of_speakers_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('motion_block', 'list_of_speakers_id', 'content_object_id_motion_block_id');
+
+
+-- definition trigger not null for assignment.list_of_speakers_id against list_of_speakers.content_object_id_assignment_id
+CREATE CONSTRAINT TRIGGER tr_i_assignment_list_of_speakers_id AFTER INSERT ON assignment_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('assignment', 'list_of_speakers_id', '');
+
+CREATE CONSTRAINT TRIGGER tr_ud_assignment_list_of_speakers_id AFTER UPDATE OF content_object_id_assignment_id OR DELETE ON list_of_speakers_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('assignment', 'list_of_speakers_id', 'content_object_id_assignment_id');
+
+
+-- definition trigger not null for poll_candidate_list.option_id against option.content_object_id_poll_candidate_list_id
+CREATE CONSTRAINT TRIGGER tr_i_poll_candidate_list_option_id AFTER INSERT ON poll_candidate_list_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('poll_candidate_list', 'option_id', '');
+
+CREATE CONSTRAINT TRIGGER tr_ud_poll_candidate_list_option_id AFTER UPDATE OF content_object_id_poll_candidate_list_id OR DELETE ON option_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_1_1('poll_candidate_list', 'option_id', 'content_object_id_poll_candidate_list_id');
+
 
 
 -- Create triggers checking foreign_id not null for relation-lists
 
 -- definition trigger not null for meeting.default_projector_agenda_item_list_ids against projector_t.used_as_default_projector_for_agenda_item_list_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_agenda_item_list_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_agenda_item_list_ids', 'used_as_default_projector_for_agenda_item_list_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_agenda_item_list_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_agenda_item_list_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_agenda_item_list_ids AFTER UPDATE OF used_as_default_projector_for_agenda_item_list_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_agenda_item_list_ids AFTER UPDATE OF used_as_default_projector_for_agenda_item_list_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_agenda_item_list_ids', 'used_as_default_projector_for_agenda_item_list_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_topic_ids against projector_t.used_as_default_projector_for_topic_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_topic_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_topic_ids', 'used_as_default_projector_for_topic_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_topic_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_topic_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_topic_ids AFTER UPDATE OF used_as_default_projector_for_topic_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_topic_ids AFTER UPDATE OF used_as_default_projector_for_topic_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_topic_ids', 'used_as_default_projector_for_topic_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_list_of_speakers_ids against projector_t.used_as_default_projector_for_list_of_speakers_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_list_of_speakers_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_list_of_speakers_ids', 'used_as_default_projector_for_list_of_speakers_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_list_of_speakers_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_list_of_speakers_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_list_of_speakers_ids AFTER UPDATE OF used_as_default_projector_for_list_of_speakers_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_list_of_speakers_ids AFTER UPDATE OF used_as_default_projector_for_list_of_speakers_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_list_of_speakers_ids', 'used_as_default_projector_for_list_of_speakers_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_current_los_ids against projector_t.used_as_default_projector_for_current_los_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_current_los_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_current_los_ids', 'used_as_default_projector_for_current_los_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_current_los_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_current_los_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_current_los_ids AFTER UPDATE OF used_as_default_projector_for_current_los_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_current_los_ids AFTER UPDATE OF used_as_default_projector_for_current_los_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_current_los_ids', 'used_as_default_projector_for_current_los_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_motion_ids against projector_t.used_as_default_projector_for_motion_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_motion_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_ids', 'used_as_default_projector_for_motion_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_motion_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_motion_ids AFTER UPDATE OF used_as_default_projector_for_motion_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_motion_ids AFTER UPDATE OF used_as_default_projector_for_motion_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_ids', 'used_as_default_projector_for_motion_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_amendment_ids against projector_t.used_as_default_projector_for_amendment_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_amendment_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_amendment_ids', 'used_as_default_projector_for_amendment_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_amendment_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_amendment_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_amendment_ids AFTER UPDATE OF used_as_default_projector_for_amendment_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_amendment_ids AFTER UPDATE OF used_as_default_projector_for_amendment_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_amendment_ids', 'used_as_default_projector_for_amendment_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_motion_block_ids against projector_t.used_as_default_projector_for_motion_block_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_motion_block_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_block_ids', 'used_as_default_projector_for_motion_block_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_motion_block_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_block_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_motion_block_ids AFTER UPDATE OF used_as_default_projector_for_motion_block_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_motion_block_ids AFTER UPDATE OF used_as_default_projector_for_motion_block_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_block_ids', 'used_as_default_projector_for_motion_block_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_assignment_ids against projector_t.used_as_default_projector_for_assignment_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_assignment_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_assignment_ids', 'used_as_default_projector_for_assignment_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_assignment_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_assignment_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_assignment_ids AFTER UPDATE OF used_as_default_projector_for_assignment_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_assignment_ids AFTER UPDATE OF used_as_default_projector_for_assignment_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_assignment_ids', 'used_as_default_projector_for_assignment_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_mediafile_ids against projector_t.used_as_default_projector_for_mediafile_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_mediafile_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_mediafile_ids', 'used_as_default_projector_for_mediafile_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_mediafile_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_mediafile_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_mediafile_ids AFTER UPDATE OF used_as_default_projector_for_mediafile_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_mediafile_ids AFTER UPDATE OF used_as_default_projector_for_mediafile_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_mediafile_ids', 'used_as_default_projector_for_mediafile_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_message_ids against projector_t.used_as_default_projector_for_message_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_message_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_message_ids', 'used_as_default_projector_for_message_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_message_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_message_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_message_ids AFTER UPDATE OF used_as_default_projector_for_message_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_message_ids AFTER UPDATE OF used_as_default_projector_for_message_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_message_ids', 'used_as_default_projector_for_message_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_countdown_ids against projector_t.used_as_default_projector_for_countdown_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_countdown_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_countdown_ids', 'used_as_default_projector_for_countdown_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_countdown_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_countdown_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_countdown_ids AFTER UPDATE OF used_as_default_projector_for_countdown_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_countdown_ids AFTER UPDATE OF used_as_default_projector_for_countdown_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_countdown_ids', 'used_as_default_projector_for_countdown_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_assignment_poll_ids against projector_t.used_as_default_projector_for_assignment_poll_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_assignment_poll_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_assignment_poll_ids', 'used_as_default_projector_for_assignment_poll_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_assignment_poll_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_assignment_poll_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_assignment_poll_ids AFTER UPDATE OF used_as_default_projector_for_assignment_poll_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_assignment_poll_ids AFTER UPDATE OF used_as_default_projector_for_assignment_poll_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_assignment_poll_ids', 'used_as_default_projector_for_assignment_poll_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_motion_poll_ids against projector_t.used_as_default_projector_for_motion_poll_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_motion_poll_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_poll_ids', 'used_as_default_projector_for_motion_poll_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_motion_poll_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_poll_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_motion_poll_ids AFTER UPDATE OF used_as_default_projector_for_motion_poll_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_motion_poll_ids AFTER UPDATE OF used_as_default_projector_for_motion_poll_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_motion_poll_ids', 'used_as_default_projector_for_motion_poll_in_meeting_id');
 
 
 -- definition trigger not null for meeting.default_projector_poll_ids against projector_t.used_as_default_projector_for_poll_in_meeting_id
-CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_poll_ids AFTER INSERT ON projector_t INITIALLY DEFERRED
-FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_poll_ids', 'used_as_default_projector_for_poll_in_meeting_id');
+CREATE CONSTRAINT TRIGGER tr_i_meeting_default_projector_poll_ids AFTER INSERT ON meeting_t INITIALLY DEFERRED
+FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_poll_ids', '');
 
-CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_poll_ids AFTER UPDATE OF used_as_default_projector_for_poll_in_meeting_id OR DELETE ON projector_t
+CREATE CONSTRAINT TRIGGER tr_ud_meeting_default_projector_poll_ids AFTER UPDATE OF used_as_default_projector_for_poll_in_meeting_id OR DELETE ON projector_t INITIALLY DEFERRED
 FOR EACH ROW EXECUTE FUNCTION check_not_null_for_relation_lists('meeting', 'default_projector_poll_ids', 'used_as_default_projector_for_poll_in_meeting_id');
 
 
@@ -2981,10 +3081,27 @@ FOR EACH ROW EXECUTE FUNCTION log_modified_models('history_position');
 CREATE CONSTRAINT TRIGGER notify_transaction_end AFTER INSERT OR UPDATE OR DELETE ON history_position_t
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION notify_transaction_end();
 
+CREATE TRIGGER tr_log_history_position_t_user_id AFTER INSERT OR UPDATE OF user_id OR DELETE ON history_position_t
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('user', 'user_id');
+
 CREATE TRIGGER tr_log_history_entry AFTER INSERT OR UPDATE OR DELETE ON history_entry_t
 FOR EACH ROW EXECUTE FUNCTION log_modified_models('history_entry');
 CREATE CONSTRAINT TRIGGER notify_transaction_end AFTER INSERT OR UPDATE OR DELETE ON history_entry_t
 DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION notify_transaction_end();
+
+
+CREATE TRIGGER tr_log_user_model_id_user_id AFTER INSERT OR UPDATE OF model_id_user_id OR DELETE ON history_entry_t
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('user','model_id_user_id');
+
+CREATE TRIGGER tr_log_motion_model_id_motion_id AFTER INSERT OR UPDATE OF model_id_motion_id OR DELETE ON history_entry_t
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('motion','model_id_motion_id');
+
+CREATE TRIGGER tr_log_assignment_model_id_assignment_id AFTER INSERT OR UPDATE OF model_id_assignment_id OR DELETE ON history_entry_t
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('assignment','model_id_assignment_id');
+CREATE TRIGGER tr_log_history_entry_t_position_id AFTER INSERT OR UPDATE OF position_id OR DELETE ON history_entry_t
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('history_position', 'position_id');
+CREATE TRIGGER tr_log_history_entry_t_meeting_id AFTER INSERT OR UPDATE OF meeting_id OR DELETE ON history_entry_t
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('meeting', 'meeting_id');
 
 
 /*   Relation-list infos
@@ -3029,10 +3146,8 @@ SQL nt:1r => user/vote_ids:-> vote/user_id
 SQL nt:1r => user/delegated_vote_ids:-> vote/delegated_user_id
 SQL nt:1r => user/poll_candidate_ids:-> poll_candidate/user_id
 FIELD 1r:nt => user/home_committee_id:-> committee/native_user_ids
-*** nt:1t => user/history_position_ids:-> history_position/user_id
-    Type combination not implemented: nt:1t on field user/history_position_ids
-*** nt:1Gt => user/history_entry_ids:-> history_entry/model_id
-    Type combination not implemented: nt:1Gt on field user/history_entry_ids
+SQL nt:1r => user/history_position_ids:-> history_position/user_id
+SQL nt:1Gr => user/history_entry_ids:-> history_entry/model_id
 SQL nts:nts => user/meeting_ids:-> meeting/user_ids
 
 FIELD 1rR:nt => meeting_user/user_id:-> user/meeting_user_ids
@@ -3158,8 +3273,7 @@ SQL ntR:1r => meeting/default_projector_poll_ids:-> projector/used_as_default_pr
 FIELD 1rR:1t => meeting/default_group_id:-> group/default_group_for_meeting_id
 FIELD 1r:1t => meeting/admin_group_id:-> group/admin_group_for_meeting_id
 FIELD 1r:1t => meeting/anonymous_group_id:-> group/anonymous_group_for_meeting_id
-*** nt:1t => meeting/relevant_history_entry_ids:-> history_entry/meeting_id
-    Type combination not implemented: nt:1t on field meeting/relevant_history_entry_ids
+SQL nt:1r => meeting/relevant_history_entry_ids:-> history_entry/meeting_id
 
 SQL nt:nt => structure_level/meeting_user_ids:-> meeting_user/structure_level_ids
 SQL nt:1rR => structure_level/structure_level_list_of_speakers_ids:-> structure_level_list_of_speakers/structure_level_id
@@ -3256,8 +3370,7 @@ SQL nt:nGt => motion/attachment_meeting_mediafile_ids:-> meeting_mediafile/attac
 SQL nt:1GrR => motion/projection_ids:-> projection/content_object_id
 SQL nt:1Gr => motion/personal_note_ids:-> personal_note/content_object_id
 FIELD 1rR:nt => motion/meeting_id:-> meeting/motion_ids
-*** nt:1Gt => motion/history_entry_ids:-> history_entry/model_id
-    Type combination not implemented: nt:1Gt on field motion/history_entry_ids
+SQL nt:1Gr => motion/history_entry_ids:-> history_entry/model_id
 
 FIELD 1rR:nt => motion_submitter/meeting_user_id:-> meeting_user/motion_submitter_ids
 FIELD 1rR:nt => motion_submitter/motion_id:-> motion/submitter_ids
@@ -3337,8 +3450,7 @@ SQL nt:nGt => assignment/tag_ids:-> tag/tagged_ids
 SQL nt:nGt => assignment/attachment_meeting_mediafile_ids:-> meeting_mediafile/attachment_ids
 SQL nt:1GrR => assignment/projection_ids:-> projection/content_object_id
 FIELD 1rR:nt => assignment/meeting_id:-> meeting/assignment_ids
-*** nt:1Gt => assignment/history_entry_ids:-> history_entry/model_id
-    Type combination not implemented: nt:1Gt on field assignment/history_entry_ids
+SQL nt:1Gr => assignment/history_entry_ids:-> history_entry/model_id
 
 FIELD 1rR:nt => assignment_candidate/assignment_id:-> assignment/candidate_ids
 FIELD 1r:nt => assignment_candidate/meeting_user_id:-> meeting_user/assignment_candidate_ids
@@ -3425,34 +3537,13 @@ FIELD 1r:nt => chat_message/meeting_user_id:-> meeting_user/chat_message_ids
 FIELD 1rR:nt => chat_message/chat_group_id:-> chat_group/chat_message_ids
 FIELD 1rR:nt => chat_message/meeting_id:-> meeting/chat_message_ids
 
-*** 1t:nt => history_position/user_id:-> user/history_position_ids
-    Type combination not implemented: 1t:nt on field history_position/user_id
-*** nt:1tR => history_position/entry_ids:-> history_entry/position_id
-    Type combination not implemented: nt:1tR on field history_position/entry_ids
+FIELD 1r:nt => history_position/user_id:-> user/history_position_ids
+SQL nt:1rR => history_position/entry_ids:-> history_entry/position_id
 
-*** 1Gt:nt,nt,nt => history_entry/model_id:-> user/history_entry_ids,motion/history_entry_ids,assignment/history_entry_ids
-    Type combination not implemented: 1Gt:nt on field history_entry/model_id
-*** 1tR:nt => history_entry/position_id:-> history_position/entry_ids
-    Type combination not implemented: 1tR:nt on field history_entry/position_id
-*** 1t:nt => history_entry/meeting_id:-> meeting/relevant_history_entry_ids
-    Type combination not implemented: 1t:nt on field history_entry/meeting_id
+FIELD 1Gr:nt,nt,nt => history_entry/model_id:-> user/history_entry_ids,motion/history_entry_ids,assignment/history_entry_ids
+FIELD 1rR:nt => history_entry/position_id:-> history_position/entry_ids
+FIELD 1r:nt => history_entry/meeting_id:-> meeting/relevant_history_entry_ids
 
-*/
-/*
-There are 13 errors/warnings
-    organization/vote_decrypt_public_main_key: type:string is marked as a calculated field and not generated in schema
-    user/history_position_ids: Type combination not implemented: nt:1t on field user/history_position_ids
-    user/history_entry_ids: Type combination not implemented: nt:1Gt on field user/history_entry_ids
-    meeting/relevant_history_entry_ids: Type combination not implemented: nt:1t on field meeting/relevant_history_entry_ids
-    motion/history_entry_ids: Type combination not implemented: nt:1Gt on field motion/history_entry_ids
-    poll/live_votes: type:JSON is marked as a calculated field and not generated in schema
-    assignment/history_entry_ids: Type combination not implemented: nt:1Gt on field assignment/history_entry_ids
-    projection/content: type:JSON is marked as a calculated field and not generated in schema
-    history_position/user_id: Type combination not implemented: 1t:nt on field history_position/user_id
-    history_position/entry_ids: Type combination not implemented: nt:1tR on field history_position/entry_ids
-    history_entry/model_id: Type combination not implemented: 1Gt:nt on field history_entry/model_id
-    history_entry/position_id: Type combination not implemented: 1tR:nt on field history_entry/position_id
-    history_entry/meeting_id: Type combination not implemented: 1t:nt on field history_entry/meeting_id
 */
 
 /*   Missing attribute handling for constant, on_delete, equal_fields, unique, deferred */
