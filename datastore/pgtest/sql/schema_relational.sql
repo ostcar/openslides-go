@@ -1,7 +1,7 @@
 
 -- schema_relational.sql for initial database setup OpenSlides
 -- Code generated. DO NOT EDIT.
--- MODELS_YML_CHECKSUM = '45a8410dde8705474ea7e4c08430f1df'
+-- MODELS_YML_CHECKSUM = '96a677040d25084cdd90c3408371672e'
 
 
 -- Database parameters
@@ -986,8 +986,7 @@ CREATE TABLE vote_t (
     value text,
     poll_id integer NOT NULL,
     acting_user_id integer,
-    represented_user_id integer,
-    meeting_id integer NOT NULL
+    represented_user_id integer
 );
 
 
@@ -1575,7 +1574,6 @@ CREATE VIEW "meeting" AS SELECT *,
 (select array_agg(mc.id ORDER BY mc.id) from motion_change_recommendation_t mc where mc.meeting_id = m.id) as motion_change_recommendation_ids,
 (select array_agg(ms.id ORDER BY ms.id) from motion_state_t ms where ms.meeting_id = m.id) as motion_state_ids,
 (select array_agg(p.id ORDER BY p.id) from poll_t p where p.meeting_id = m.id) as poll_ids,
-(select array_agg(v.id ORDER BY v.id) from vote_t v where v.meeting_id = m.id) as vote_ids,
 (select array_agg(a.id ORDER BY a.id) from assignment_t a where a.meeting_id = m.id) as assignment_ids,
 (select array_agg(a.id ORDER BY a.id) from assignment_candidate_t a where a.meeting_id = m.id) as assignment_candidate_ids,
 (select array_agg(p.id ORDER BY p.id) from personal_note_t p where p.meeting_id = m.id) as personal_note_ids,
@@ -2010,7 +2008,6 @@ ALTER TABLE poll_t ADD FOREIGN KEY(meeting_id) REFERENCES meeting_t(id) INITIALL
 ALTER TABLE vote_t ADD FOREIGN KEY(poll_id) REFERENCES poll_t(id) INITIALLY DEFERRED;
 ALTER TABLE vote_t ADD FOREIGN KEY(acting_user_id) REFERENCES user_t(id) INITIALLY DEFERRED;
 ALTER TABLE vote_t ADD FOREIGN KEY(represented_user_id) REFERENCES user_t(id) INITIALLY DEFERRED;
-ALTER TABLE vote_t ADD FOREIGN KEY(meeting_id) REFERENCES meeting_t(id) INITIALLY DEFERRED;
 
 ALTER TABLE assignment_t ADD FOREIGN KEY(meeting_id) REFERENCES meeting_t(id) INITIALLY DEFERRED;
 
@@ -2771,8 +2768,6 @@ CREATE TRIGGER tr_log_vote_t_acting_user_id AFTER INSERT OR UPDATE OF acting_use
 FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('user', 'acting_user_id');
 CREATE TRIGGER tr_log_vote_t_represented_user_id AFTER INSERT OR UPDATE OF represented_user_id OR DELETE ON vote_t
 FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('user', 'represented_user_id');
-CREATE TRIGGER tr_log_vote_t_meeting_id AFTER INSERT OR UPDATE OF meeting_id OR DELETE ON vote_t
-FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('meeting', 'meeting_id');
 
 CREATE TRIGGER tr_log_assignment AFTER INSERT OR UPDATE OR DELETE ON assignment_t
 FOR EACH ROW EXECUTE FUNCTION log_modified_models('assignment');
@@ -3136,7 +3131,6 @@ SQL nt:1rR => meeting/motion_working_group_speaker_ids:-> motion_working_group_s
 SQL nt:1rR => meeting/motion_change_recommendation_ids:-> motion_change_recommendation/meeting_id
 SQL nt:1rR => meeting/motion_state_ids:-> motion_state/meeting_id
 SQL nt:1rR => meeting/poll_ids:-> poll/meeting_id
-SQL nt:1rR => meeting/vote_ids:-> vote/meeting_id
 SQL nt:1rR => meeting/assignment_ids:-> assignment/meeting_id
 SQL nt:1rR => meeting/assignment_candidate_ids:-> assignment_candidate/meeting_id
 SQL nt:1rR => meeting/personal_note_ids:-> personal_note/meeting_id
@@ -3344,7 +3338,6 @@ FIELD 1rR:nt => poll/meeting_id:-> meeting/poll_ids
 FIELD 1rR:nt => vote/poll_id:-> poll/vote_ids
 FIELD 1r:nt => vote/acting_user_id:-> user/acting_vote_ids
 FIELD 1r:nt => vote/represented_user_id:-> user/represented_vote_ids
-FIELD 1rR:nt => vote/meeting_id:-> meeting/vote_ids
 
 SQL nt:1rR => assignment/candidate_ids:-> assignment_candidate/assignment_id
 SQL nt:1GrR => assignment/poll_ids:-> poll/content_object_id

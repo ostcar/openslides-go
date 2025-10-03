@@ -1742,7 +1742,6 @@ type Meeting struct {
 	UsersPdfWlanEncryption                       string
 	UsersPdfWlanPassword                         string
 	UsersPdfWlanSsid                             string
-	VoteIDs                                      []int
 	WelcomeText                                  string
 	WelcomeTitle                                 string
 	AdminGroup                                   *dsfetch.Maybe[Group]
@@ -1833,7 +1832,6 @@ type Meeting struct {
 	TopicList                                    []Topic
 	TopicPollDefaultGroupList                    []Group
 	UserList                                     []User
-	VoteList                                     []Vote
 }
 
 type meetingBuilder struct {
@@ -2079,7 +2077,6 @@ func (b *meetingBuilder) lazy(ds *Fetch, id int) *Meeting {
 	ds.Meeting_UsersPdfWlanEncryption(id).Lazy(&c.UsersPdfWlanEncryption)
 	ds.Meeting_UsersPdfWlanPassword(id).Lazy(&c.UsersPdfWlanPassword)
 	ds.Meeting_UsersPdfWlanSsid(id).Lazy(&c.UsersPdfWlanSsid)
-	ds.Meeting_VoteIDs(id).Lazy(&c.VoteIDs)
 	ds.Meeting_WelcomeText(id).Lazy(&c.WelcomeText)
 	ds.Meeting_WelcomeTitle(id).Lazy(&c.WelcomeTitle)
 	return &c
@@ -3112,18 +3109,6 @@ func (b *meetingBuilder) UserList() *userBuilder {
 			parent:   b,
 			idField:  "UserIDs",
 			relField: "UserList",
-			many:     true,
-		},
-	}
-}
-
-func (b *meetingBuilder) VoteList() *voteBuilder {
-	return &voteBuilder{
-		builder: builder[voteBuilder, *voteBuilder, Vote]{
-			fetch:    b.fetch,
-			parent:   b,
-			idField:  "VoteIDs",
-			relField: "VoteList",
 			many:     true,
 		},
 	}
@@ -7368,13 +7353,11 @@ func (r *Fetch) User(ids ...int) *userBuilder {
 type Vote struct {
 	ActingUserID      dsfetch.Maybe[int]
 	ID                int
-	MeetingID         int
 	PollID            int
 	RepresentedUserID dsfetch.Maybe[int]
 	Value             string
 	Weight            string
 	ActingUser        *dsfetch.Maybe[User]
-	Meeting           *Meeting
 	Poll              *Poll
 	RepresentedUser   *dsfetch.Maybe[User]
 }
@@ -7387,7 +7370,6 @@ func (b *voteBuilder) lazy(ds *Fetch, id int) *Vote {
 	c := Vote{}
 	ds.Vote_ActingUserID(id).Lazy(&c.ActingUserID)
 	ds.Vote_ID(id).Lazy(&c.ID)
-	ds.Vote_MeetingID(id).Lazy(&c.MeetingID)
 	ds.Vote_PollID(id).Lazy(&c.PollID)
 	ds.Vote_RepresentedUserID(id).Lazy(&c.RepresentedUserID)
 	ds.Vote_Value(id).Lazy(&c.Value)
@@ -7407,17 +7389,6 @@ func (b *voteBuilder) ActingUser() *userBuilder {
 			parent:   b,
 			idField:  "ActingUserID",
 			relField: "ActingUser",
-		},
-	}
-}
-
-func (b *voteBuilder) Meeting() *meetingBuilder {
-	return &meetingBuilder{
-		builder: builder[meetingBuilder, *meetingBuilder, Meeting]{
-			fetch:    b.fetch,
-			parent:   b,
-			idField:  "MeetingID",
-			relField: "Meeting",
 		},
 	}
 }

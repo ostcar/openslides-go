@@ -4429,15 +4429,6 @@ func (r *Fetch) Meeting_UsersPdfWlanSsid(meetingID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
-func (r *Fetch) Meeting_VoteIDs(meetingID int) *ValueIntSlice {
-	key, err := dskey.FromParts("meeting", meetingID, "vote_ids")
-	if err != nil {
-		return &ValueIntSlice{err: err}
-	}
-
-	return &ValueIntSlice{fetch: r, key: key}
-}
-
 func (r *Fetch) Meeting_WelcomeText(meetingID int) *ValueString {
 	key, err := dskey.FromParts("meeting", meetingID, "welcome_text")
 	if err != nil {
@@ -8238,15 +8229,6 @@ func (r *Fetch) Vote_ActingUserID(voteID int) *ValueMaybeInt {
 
 func (r *Fetch) Vote_ID(voteID int) *ValueInt {
 	key, err := dskey.FromParts("vote", voteID, "id")
-	if err != nil {
-		return &ValueInt{err: err}
-	}
-
-	return &ValueInt{fetch: r, key: key, required: true}
-}
-
-func (r *Fetch) Vote_MeetingID(voteID int) *ValueInt {
-	key, err := dskey.FromParts("vote", voteID, "meeting_id")
 	if err != nil {
 		return &ValueInt{err: err}
 	}

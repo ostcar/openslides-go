@@ -177,7 +177,6 @@ var RelationFields = map[string]string{
 	"user/home_committee_id":                                                 "committee/native_user_ids",
 	"user/organization_id":                                                   "organization/user_ids",
 	"vote/acting_user_id":                                                    "user/acting_vote_ids",
-	"vote/meeting_id":                                                        "meeting/vote_ids",
 	"vote/poll_id":                                                           "poll/vote_ids",
 	"vote/represented_user_id":                                               "user/represented_vote_ids",
 }
@@ -281,7 +280,6 @@ var RelationListFields = map[string]string{
 	"meeting/topic_ids":                                        "topic/meeting_id",
 	"meeting/topic_poll_default_group_ids":                     "group/used_as_topic_poll_default_id",
 	"meeting/user_ids":                                         "user/meeting_ids",
-	"meeting/vote_ids":                                         "vote/meeting_id",
 	"meeting_mediafile/access_group_ids":                       "group/meeting_mediafile_access_group_ids",
 	"meeting_mediafile/inherited_access_group_ids":             "group/meeting_mediafile_inherited_access_group_ids",
 	"meeting_mediafile/projection_ids":                         "projection/content_object_id",
@@ -769,7 +767,6 @@ var RestrictionModes = map[string]string{
 	"meeting/users_pdf_wlan_encryption":                             "B",
 	"meeting/users_pdf_wlan_password":                               "B",
 	"meeting/users_pdf_wlan_ssid":                                   "B",
-	"meeting/vote_ids":                                              "B",
 	"meeting/applause_enable":                                       "C",
 	"meeting/applause_max_amount":                                   "C",
 	"meeting/applause_min_amount":                                   "C",
@@ -1330,7 +1327,6 @@ var RestrictionModes = map[string]string{
 
 	// vote
 	"vote/id":                  "A",
-	"vote/meeting_id":          "A",
 	"vote/poll_id":             "A",
 	"vote/acting_user_id":      "B",
 	"vote/represented_user_id": "B",
