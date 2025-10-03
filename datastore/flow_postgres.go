@@ -258,7 +258,7 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 		sql := `SELECT DISTINCT fqid FROM os_notify_log_t WHERE xact_id = $1::xid8;`
 		rows, err := conn.Conn().Query(ctx, sql, payload.XACTID)
 		if err != nil {
-			updateFn(nil, fmt.Errorf("query fqids for transaction %q: %w", payload.XACTID, err))
+			updateFn(nil, fmt.Errorf("query fqids for transaction %d: %w", payload.XACTID, err))
 			return
 		}
 
