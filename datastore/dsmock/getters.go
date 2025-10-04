@@ -108,7 +108,7 @@ type Counter struct {
 }
 
 // NewCounter initializes a Counter.
-func NewCounter(ds flow.Getter) flow.Getter {
+func NewCounter(ds flow.Getter) *Counter {
 	return &Counter{ds: ds}
 }
 
@@ -165,7 +165,7 @@ type CounterFlow struct {
 	flow flow.Flow
 }
 
-func NewCounterFlow(ds flow.Flow) flow.Flow {
+func NewCounterFlow(ds flow.Flow) *CounterFlow {
 	return &CounterFlow{Counter: Counter{ds: ds}, flow: ds}
 }
 
