@@ -1328,8 +1328,8 @@ var RestrictionModes = map[string]string{
 	// vote
 	"vote/id":                  "A",
 	"vote/poll_id":             "A",
-	"vote/acting_user_id":      "B",
-	"vote/represented_user_id": "B",
 	"vote/value":               "B",
 	"vote/weight":              "B",
+	"vote/acting_user_id":      "C",
+	"vote/represented_user_id": "C",
 }
