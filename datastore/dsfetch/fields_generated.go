@@ -4051,6 +4051,15 @@ func (r *Fetch) Meeting_PollDefaultAllowInvalid(meetingID int) *ValueBool {
 	return &ValueBool{fetch: r, key: key}
 }
 
+func (r *Fetch) Meeting_PollDefaultAllowVoteSplit(meetingID int) *ValueBool {
+	key, err := dskey.FromParts("meeting", meetingID, "poll_default_allow_vote_split")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
+}
+
 func (r *Fetch) Meeting_PollDefaultGroupIDs(meetingID int) *ValueIntSlice {
 	key, err := dskey.FromParts("meeting", meetingID, "poll_default_group_ids")
 	if err != nil {
@@ -6319,6 +6328,15 @@ func (r *Fetch) Poll_AllowInvalid(pollID int) *ValueBool {
 	return &ValueBool{fetch: r, key: key}
 }
 
+func (r *Fetch) Poll_AllowVoteSplit(pollID int) *ValueBool {
+	key, err := dskey.FromParts("poll", pollID, "allow_vote_split")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
+}
+
 func (r *Fetch) Poll_Config(pollID int) *ValueString {
 	key, err := dskey.FromParts("poll", pollID, "config")
 	if err != nil {
@@ -8252,6 +8270,15 @@ func (r *Fetch) Vote_RepresentedUserID(voteID int) *ValueMaybeInt {
 	}
 
 	return &ValueMaybeInt{fetch: r, key: key}
+}
+
+func (r *Fetch) Vote_Split(voteID int) *ValueBool {
+	key, err := dskey.FromParts("vote", voteID, "split")
+	if err != nil {
+		return &ValueBool{err: err}
+	}
+
+	return &ValueBool{fetch: r, key: key}
 }
 
 func (r *Fetch) Vote_Value(voteID int) *ValueString {

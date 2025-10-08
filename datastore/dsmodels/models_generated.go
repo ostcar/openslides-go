@@ -1700,6 +1700,7 @@ type Meeting struct {
 	PollCountdownID                              dsfetch.Maybe[int]
 	PollCoupleCountdown                          bool
 	PollDefaultAllowInvalid                      bool
+	PollDefaultAllowVoteSplit                    bool
 	PollDefaultGroupIDs                          []int
 	PollDefaultLiveVotingEnabled                 bool
 	PollDefaultMethod                            string
@@ -2035,6 +2036,7 @@ func (b *meetingBuilder) lazy(ds *Fetch, id int) *Meeting {
 	ds.Meeting_PollCountdownID(id).Lazy(&c.PollCountdownID)
 	ds.Meeting_PollCoupleCountdown(id).Lazy(&c.PollCoupleCountdown)
 	ds.Meeting_PollDefaultAllowInvalid(id).Lazy(&c.PollDefaultAllowInvalid)
+	ds.Meeting_PollDefaultAllowVoteSplit(id).Lazy(&c.PollDefaultAllowVoteSplit)
 	ds.Meeting_PollDefaultGroupIDs(id).Lazy(&c.PollDefaultGroupIDs)
 	ds.Meeting_PollDefaultLiveVotingEnabled(id).Lazy(&c.PollDefaultLiveVotingEnabled)
 	ds.Meeting_PollDefaultMethod(id).Lazy(&c.PollDefaultMethod)
@@ -5619,6 +5621,7 @@ func (r *Fetch) PointOfOrderCategory(ids ...int) *pointOfOrderCategoryBuilder {
 // Poll has all fields from poll.
 type Poll struct {
 	AllowInvalid      bool
+	AllowVoteSplit    bool
 	Config            string
 	ContentObjectID   string
 	EntitledGroupIDs  []int
@@ -5648,6 +5651,7 @@ type pollBuilder struct {
 func (b *pollBuilder) lazy(ds *Fetch, id int) *Poll {
 	c := Poll{}
 	ds.Poll_AllowInvalid(id).Lazy(&c.AllowInvalid)
+	ds.Poll_AllowVoteSplit(id).Lazy(&c.AllowVoteSplit)
 	ds.Poll_Config(id).Lazy(&c.Config)
 	ds.Poll_ContentObjectID(id).Lazy(&c.ContentObjectID)
 	ds.Poll_EntitledGroupIDs(id).Lazy(&c.EntitledGroupIDs)
@@ -7355,6 +7359,7 @@ type Vote struct {
 	ID                int
 	PollID            int
 	RepresentedUserID dsfetch.Maybe[int]
+	Split             bool
 	Value             string
 	Weight            string
 	ActingUser        *dsfetch.Maybe[User]
@@ -7372,6 +7377,7 @@ func (b *voteBuilder) lazy(ds *Fetch, id int) *Vote {
 	ds.Vote_ID(id).Lazy(&c.ID)
 	ds.Vote_PollID(id).Lazy(&c.PollID)
 	ds.Vote_RepresentedUserID(id).Lazy(&c.RepresentedUserID)
+	ds.Vote_Split(id).Lazy(&c.Split)
 	ds.Vote_Value(id).Lazy(&c.Value)
 	ds.Vote_Weight(id).Lazy(&c.Weight)
 	return &c
