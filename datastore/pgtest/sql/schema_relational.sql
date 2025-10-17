@@ -23,7 +23,9 @@ CREATE FUNCTION generate_sequence()
 RETURNS trigger
 AS $sequences_trigger$
 -- Creates a sequence for the id given by depend_field NEW data if it doesn't exist.
--- Writes the next value to for this sequence NEW.
+-- Writes the next value to for this sequence to NEW.
+-- In case a number is given in actual_column of the NEW record that is used
+-- and the corresponding sequence increased if necessary.
 -- Usage with 3 parameters IN TRIGGER DEFINITION:
 -- table_name: table this is treated for
 -- actual_column: column that will be filled with the actual value
@@ -34,11 +36,23 @@ DECLARE
     depend_field TEXT := TG_ARGV[2];
     depend_field_id INTEGER;
     sequence_name TEXT;
+    sequence_value INTEGER;
+    sequence_max INTEGER;
 BEGIN
     depend_field_id := hstore(NEW) -> (depend_field);
     sequence_name := table_name || '_' || depend_field || depend_field_id || '_' || actual_column || '_seq';
     EXECUTE format('CREATE SEQUENCE IF NOT EXISTS %I OWNED BY %I.%I', sequence_name, table_name, actual_column);
-    RETURN populate_record(NEW, format('%s=>%s',actual_column, nextval(sequence_name))::hstore);
+    sequence_value := hstore(NEW) -> actual_column;
+    IF sequence_value IS NULL THEN
+        sequence_value := nextval(sequence_name);
+    ELSE
+        EXECUTE format('SELECT last_value FROM %I', sequence_name) INTO sequence_max;
+        -- <= because the unused sequence starts with last_value=1 and is_called=f and needs to be written to.
+        IF sequence_max <= sequence_value THEN
+            SELECT setval(sequence_name, sequence_value) INTO sequence_value;
+        END IF;
+    END IF;
+    RETURN populate_record(NEW, format('%s=>%s',actual_column, sequence_value)::hstore);
 END;
 $sequences_trigger$
 LANGUAGE plpgsql;
