@@ -4,6 +4,7 @@ package dsmodels
 import (
 	"encoding/json"
 	"github.com/OpenSlides/openslides-go/datastore/dsfetch"
+	"github.com/shopspring/decimal"
 )
 
 // ActionWorker has all fields from action_worker.
@@ -3490,7 +3491,7 @@ type MeetingUser struct {
 	UserID                        int
 	VoteDelegatedToID             dsfetch.Maybe[int]
 	VoteDelegationsFromIDs        []int
-	VoteWeight                    string
+	VoteWeight                    decimal.Decimal
 	AssignmentCandidateList       []AssignmentCandidate
 	ChatMessageList               []ChatMessage
 	GroupList                     []Group
@@ -7086,7 +7087,7 @@ type User struct {
 	CommitteeIDs                []int
 	CommitteeManagementIDs      []int
 	DefaultPassword             string
-	DefaultVoteWeight           string
+	DefaultVoteWeight           decimal.Decimal
 	Email                       string
 	External                    bool
 	FirstName                   string
@@ -7361,7 +7362,7 @@ type Vote struct {
 	RepresentedUserID dsfetch.Maybe[int]
 	Split             bool
 	Value             string
-	Weight            string
+	Weight            decimal.Decimal
 	ActingUser        *dsfetch.Maybe[User]
 	Poll              *Poll
 	RepresentedUser   *dsfetch.Maybe[User]
