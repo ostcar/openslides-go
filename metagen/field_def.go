@@ -1094,8 +1094,8 @@ var RestrictionModes = map[string]string{
 	"poll/title":              "A",
 	"poll/visibility":         "A",
 	"poll/vote_ids":           "A",
-	"poll/voted_ids":          "A",
 	"poll/result":             "B",
+	"poll/voted_ids":          "B",
 
 	// poll_candidate
 	"poll_candidate/id":                     "A",

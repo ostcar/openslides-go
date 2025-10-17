@@ -1,7 +1,7 @@
 
 -- schema_relational.sql for initial database setup OpenSlides
 -- Code generated. DO NOT EDIT.
--- MODELS_YML_CHECKSUM = 'd8f710ff7cfd672ef69e72f451ed558c'
+-- MODELS_YML_CHECKSUM = '61012eeafa6bc4616939f5a7f4fa4e8d'
 
 
 -- Database parameters
@@ -91,14 +91,12 @@ $notify_trigger$ LANGUAGE plpgsql;
 CREATE OR REPLACE FUNCTION log_modified_related_models()
 RETURNS trigger AS $log_modified_related_trigger$
 DECLARE
-    operation_var TEXT;
     fqid_var TEXT;
     ref_column TEXT;
     foreign_table TEXT;
     foreign_id TEXT;
     i INTEGER := 0;
 BEGIN
-    operation_var := LOWER(TG_OP);
 
     WHILE i < TG_NARGS LOOP
         foreign_table := TG_ARGV[i];
@@ -113,7 +111,7 @@ BEGIN
         IF foreign_id IS NOT NULL THEN
             fqid_var := foreign_table || '/' || foreign_id;
             INSERT INTO os_notify_log_t  (operation, fqid, xact_id, timestamp)
-            VALUES (operation_var, fqid_var, pg_current_xact_id(), now())
+            VALUES ('update', fqid_var, pg_current_xact_id(), now())
             ON CONFLICT (operation,fqid,xact_id) DO NOTHING;
         END IF;
 
