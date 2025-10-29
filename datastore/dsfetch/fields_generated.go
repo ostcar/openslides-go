@@ -6422,6 +6422,15 @@ func (r *Fetch) Poll_Config(pollID int) *ValueString {
 	return &ValueString{fetch: r, key: key}
 }
 
+func (r *Fetch) Poll_ConfigOptionUserIDs(pollID int) *ValueIntSlice {
+	key, err := dskey.FromParts("poll", pollID, "config_option_user_ids")
+	if err != nil {
+		return &ValueIntSlice{err: err}
+	}
+
+	return &ValueIntSlice{fetch: r, key: key}
+}
+
 func (r *Fetch) Poll_ContentObjectID(pollID int) *ValueString {
 	key, err := dskey.FromParts("poll", pollID, "content_object_id")
 	if err != nil {
@@ -8251,6 +8260,15 @@ func (r *Fetch) User_Password(userID int) *ValueString {
 
 func (r *Fetch) User_PollCandidateIDs(userID int) *ValueIntSlice {
 	key, err := dskey.FromParts("user", userID, "poll_candidate_ids")
+	if err != nil {
+		return &ValueIntSlice{err: err}
+	}
+
+	return &ValueIntSlice{fetch: r, key: key}
+}
+
+func (r *Fetch) User_PollOptionPollID(userID int) *ValueIntSlice {
+	key, err := dskey.FromParts("user", userID, "poll_option_poll_id")
 	if err != nil {
 		return &ValueIntSlice{err: err}
 	}

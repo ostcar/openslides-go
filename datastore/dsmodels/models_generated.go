@@ -5621,28 +5621,30 @@ func (r *Fetch) PointOfOrderCategory(ids ...int) *pointOfOrderCategoryBuilder {
 
 // Poll has all fields from poll.
 type Poll struct {
-	AllowInvalid      bool
-	AllowVoteSplit    bool
-	Config            string
-	ContentObjectID   string
-	EntitledGroupIDs  []int
-	ID                int
-	MeetingID         int
-	Method            string
-	ProjectionIDs     []int
-	Published         bool
-	Result            string
-	SequentialNumber  int
-	State             string
-	Title             string
-	Visibility        string
-	VoteIDs           []int
-	VotedIDs          []int
-	EntitledGroupList []Group
-	Meeting           *Meeting
-	ProjectionList    []Projection
-	VoteList          []Vote
-	VotedList         []User
+	AllowInvalid         bool
+	AllowVoteSplit       bool
+	Config               string
+	ConfigOptionUserIDs  []int
+	ContentObjectID      string
+	EntitledGroupIDs     []int
+	ID                   int
+	MeetingID            int
+	Method               string
+	ProjectionIDs        []int
+	Published            bool
+	Result               string
+	SequentialNumber     int
+	State                string
+	Title                string
+	Visibility           string
+	VoteIDs              []int
+	VotedIDs             []int
+	ConfigOptionUserList []User
+	EntitledGroupList    []Group
+	Meeting              *Meeting
+	ProjectionList       []Projection
+	VoteList             []Vote
+	VotedList            []User
 }
 
 type pollBuilder struct {
@@ -5654,6 +5656,7 @@ func (b *pollBuilder) lazy(ds *Fetch, id int) *Poll {
 	ds.Poll_AllowInvalid(id).Lazy(&c.AllowInvalid)
 	ds.Poll_AllowVoteSplit(id).Lazy(&c.AllowVoteSplit)
 	ds.Poll_Config(id).Lazy(&c.Config)
+	ds.Poll_ConfigOptionUserIDs(id).Lazy(&c.ConfigOptionUserIDs)
 	ds.Poll_ContentObjectID(id).Lazy(&c.ContentObjectID)
 	ds.Poll_EntitledGroupIDs(id).Lazy(&c.EntitledGroupIDs)
 	ds.Poll_ID(id).Lazy(&c.ID)
@@ -5674,6 +5677,18 @@ func (b *pollBuilder) lazy(ds *Fetch, id int) *Poll {
 func (b *pollBuilder) Preload(rel builderWrapperI) *pollBuilder {
 	b.builder.Preload(rel)
 	return b
+}
+
+func (b *pollBuilder) ConfigOptionUserList() *userBuilder {
+	return &userBuilder{
+		builder: builder[userBuilder, *userBuilder, User]{
+			fetch:    b.fetch,
+			parent:   b,
+			idField:  "ConfigOptionUserIDs",
+			relField: "ConfigOptionUserList",
+			many:     true,
+		},
+	}
 }
 
 func (b *pollBuilder) EntitledGroupList() *groupBuilder {
@@ -7110,6 +7125,7 @@ type User struct {
 	OrganizationManagementLevel string
 	Password                    string
 	PollCandidateIDs            []int
+	PollOptionPollID            []int
 	PollVotedIDs                []int
 	Pronoun                     string
 	RepresentedVoteIDs          []int
@@ -7128,6 +7144,7 @@ type User struct {
 	MeetingUserList             []MeetingUser
 	Organization                *Organization
 	PollCandidateList           []PollCandidate
+	PollOptionPoll              []Poll
 	PollVotedList               []Poll
 	RepresentedVoteList         []Vote
 }
@@ -7166,6 +7183,7 @@ func (b *userBuilder) lazy(ds *Fetch, id int) *User {
 	ds.User_OrganizationManagementLevel(id).Lazy(&c.OrganizationManagementLevel)
 	ds.User_Password(id).Lazy(&c.Password)
 	ds.User_PollCandidateIDs(id).Lazy(&c.PollCandidateIDs)
+	ds.User_PollOptionPollID(id).Lazy(&c.PollOptionPollID)
 	ds.User_PollVotedIDs(id).Lazy(&c.PollVotedIDs)
 	ds.User_Pronoun(id).Lazy(&c.Pronoun)
 	ds.User_RepresentedVoteIDs(id).Lazy(&c.RepresentedVoteIDs)
@@ -7316,6 +7334,18 @@ func (b *userBuilder) PollCandidateList() *pollCandidateBuilder {
 			parent:   b,
 			idField:  "PollCandidateIDs",
 			relField: "PollCandidateList",
+			many:     true,
+		},
+	}
+}
+
+func (b *userBuilder) PollOptionPoll() *pollBuilder {
+	return &pollBuilder{
+		builder: builder[pollBuilder, *pollBuilder, Poll]{
+			fetch:    b.fetch,
+			parent:   b,
+			idField:  "PollOptionPollID",
+			relField: "PollOptionPoll",
 			many:     true,
 		},
 	}
