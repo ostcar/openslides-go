@@ -1,7 +1,7 @@
 
 -- schema_relational.sql for initial database setup OpenSlides
 -- Code generated. DO NOT EDIT.
--- MODELS_YML_CHECKSUM = '23279d1eda1e7f45ab74fe4edfbaf546'
+-- MODELS_YML_CHECKSUM = 'ebb63fc6d10ae8ef886d92a23ea03f55'
 
 
 -- Function and meta table definitions
@@ -2147,8 +2147,8 @@ ALTER TABLE poll_config_option_t ADD FOREIGN KEY(poll_config_id_poll_config_rati
 ALTER TABLE poll_config_option_t ADD FOREIGN KEY(meeting_user_id) REFERENCES meeting_user_t(id) INITIALLY DEFERRED;
 
 ALTER TABLE ballot_t ADD FOREIGN KEY(poll_id) REFERENCES poll_t(id) INITIALLY DEFERRED;
-ALTER TABLE ballot_t ADD FOREIGN KEY(acting_meeting_user_id) REFERENCES user_t(id) INITIALLY DEFERRED;
-ALTER TABLE ballot_t ADD FOREIGN KEY(represented_meeting_user_id) REFERENCES user_t(id) INITIALLY DEFERRED;
+ALTER TABLE ballot_t ADD FOREIGN KEY(acting_meeting_user_id) REFERENCES meeting_user_t(id) INITIALLY DEFERRED;
+ALTER TABLE ballot_t ADD FOREIGN KEY(represented_meeting_user_id) REFERENCES meeting_user_t(id) INITIALLY DEFERRED;
 
 ALTER TABLE assignment_t ADD FOREIGN KEY(meeting_id) REFERENCES meeting_t(id) INITIALLY DEFERRED;
 
@@ -3020,9 +3020,9 @@ DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION notify_transaction_e
 CREATE TRIGGER tr_log_ballot_t_poll_id AFTER INSERT OR UPDATE OF poll_id OR DELETE ON ballot_t
 FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('poll', 'poll_id');
 CREATE TRIGGER tr_log_ballot_t_acting_meeting_user_id AFTER INSERT OR UPDATE OF acting_meeting_user_id OR DELETE ON ballot_t
-FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('user', 'acting_meeting_user_id');
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('meeting_user', 'acting_meeting_user_id');
 CREATE TRIGGER tr_log_ballot_t_represented_meeting_user_id AFTER INSERT OR UPDATE OF represented_meeting_user_id OR DELETE ON ballot_t
-FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('user', 'represented_meeting_user_id');
+FOR EACH ROW EXECUTE FUNCTION log_modified_related_models('meeting_user', 'represented_meeting_user_id');
 
 CREATE TRIGGER tr_log_assignment AFTER INSERT OR UPDATE OR DELETE ON assignment_t
 FOR EACH ROW EXECUTE FUNCTION log_modified_models('assignment');
@@ -3607,8 +3607,8 @@ FIELD 1GrR:nt,nt,nt => poll_config_option/poll_config_id:-> poll_config_selectio
 FIELD 1r:nr => poll_config_option/meeting_user_id:-> meeting_user/poll_option_ids
 
 FIELD 1rR:nr => ballot/poll_id:-> poll/ballot_ids
-FIELD 1r:nt => ballot/acting_meeting_user_id:-> user/acting_ballot_ids
-FIELD 1r:nt => ballot/represented_meeting_user_id:-> user/represented_ballot_ids
+FIELD 1r:nt => ballot/acting_meeting_user_id:-> meeting_user/acting_ballot_ids
+FIELD 1r:nt => ballot/represented_meeting_user_id:-> meeting_user/represented_ballot_ids
 
 SQL nt:1rR => assignment/candidate_ids:-> assignment_candidate/assignment_id
 SQL nt:1GrR => assignment/poll_ids:-> poll/content_object_id
