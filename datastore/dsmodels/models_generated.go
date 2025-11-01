@@ -420,16 +420,16 @@ func (r *Fetch) AssignmentCandidate(ids ...int) *assignmentCandidateBuilder {
 
 // Ballot has all fields from ballot.
 type Ballot struct {
-	ActingUserID      dsfetch.Maybe[int]
-	ID                int
-	PollID            int
-	RepresentedUserID dsfetch.Maybe[int]
-	Split             bool
-	Value             string
-	Weight            decimal.Decimal
-	ActingUser        *dsfetch.Maybe[MeetingUser]
-	Poll              *Poll
-	RepresentedUser   *dsfetch.Maybe[MeetingUser]
+	ActingMeetingUserID      dsfetch.Maybe[int]
+	ID                       int
+	PollID                   int
+	RepresentedMeetingUserID dsfetch.Maybe[int]
+	Split                    bool
+	Value                    string
+	Weight                   decimal.Decimal
+	ActingMeetingUser        *dsfetch.Maybe[MeetingUser]
+	Poll                     *Poll
+	RepresentedMeetingUser   *dsfetch.Maybe[MeetingUser]
 }
 
 type ballotBuilder struct {
@@ -438,10 +438,10 @@ type ballotBuilder struct {
 
 func (b *ballotBuilder) lazy(ds *Fetch, id int) *Ballot {
 	c := Ballot{}
-	ds.Ballot_ActingUserID(id).Lazy(&c.ActingUserID)
+	ds.Ballot_ActingMeetingUserID(id).Lazy(&c.ActingMeetingUserID)
 	ds.Ballot_ID(id).Lazy(&c.ID)
 	ds.Ballot_PollID(id).Lazy(&c.PollID)
-	ds.Ballot_RepresentedUserID(id).Lazy(&c.RepresentedUserID)
+	ds.Ballot_RepresentedMeetingUserID(id).Lazy(&c.RepresentedMeetingUserID)
 	ds.Ballot_Split(id).Lazy(&c.Split)
 	ds.Ballot_Value(id).Lazy(&c.Value)
 	ds.Ballot_Weight(id).Lazy(&c.Weight)
@@ -453,13 +453,13 @@ func (b *ballotBuilder) Preload(rel builderWrapperI) *ballotBuilder {
 	return b
 }
 
-func (b *ballotBuilder) ActingUser() *meetingUserBuilder {
+func (b *ballotBuilder) ActingMeetingUser() *meetingUserBuilder {
 	return &meetingUserBuilder{
 		builder: builder[meetingUserBuilder, *meetingUserBuilder, MeetingUser]{
 			fetch:    b.fetch,
 			parent:   b,
-			idField:  "ActingUserID",
-			relField: "ActingUser",
+			idField:  "ActingMeetingUserID",
+			relField: "ActingMeetingUser",
 		},
 	}
 }
@@ -475,13 +475,13 @@ func (b *ballotBuilder) Poll() *pollBuilder {
 	}
 }
 
-func (b *ballotBuilder) RepresentedUser() *meetingUserBuilder {
+func (b *ballotBuilder) RepresentedMeetingUser() *meetingUserBuilder {
 	return &meetingUserBuilder{
 		builder: builder[meetingUserBuilder, *meetingUserBuilder, MeetingUser]{
 			fetch:    b.fetch,
 			parent:   b,
-			idField:  "RepresentedUserID",
-			relField: "RepresentedUser",
+			idField:  "RepresentedMeetingUserID",
+			relField: "RepresentedMeetingUser",
 		},
 	}
 }
@@ -3564,6 +3564,7 @@ type MeetingUser struct {
 	Number                        string
 	PersonalNoteIDs               []int
 	PollOptionIDs                 []int
+	PollVotedIDs                  []int
 	RepresentedBallotIDs          []int
 	SpeakerIDs                    []int
 	StructureLevelIDs             []int
@@ -3582,6 +3583,7 @@ type MeetingUser struct {
 	MotionWorkingGroupSpeakerList []MotionWorkingGroupSpeaker
 	PersonalNoteList              []PersonalNote
 	PollOptionList                []PollConfigOption
+	PollVotedList                 []Poll
 	RepresentedBallotList         []Ballot
 	SpeakerList                   []Speaker
 	StructureLevelList            []StructureLevel
@@ -3612,6 +3614,7 @@ func (b *meetingUserBuilder) lazy(ds *Fetch, id int) *MeetingUser {
 	ds.MeetingUser_Number(id).Lazy(&c.Number)
 	ds.MeetingUser_PersonalNoteIDs(id).Lazy(&c.PersonalNoteIDs)
 	ds.MeetingUser_PollOptionIDs(id).Lazy(&c.PollOptionIDs)
+	ds.MeetingUser_PollVotedIDs(id).Lazy(&c.PollVotedIDs)
 	ds.MeetingUser_RepresentedBallotIDs(id).Lazy(&c.RepresentedBallotIDs)
 	ds.MeetingUser_SpeakerIDs(id).Lazy(&c.SpeakerIDs)
 	ds.MeetingUser_StructureLevelIDs(id).Lazy(&c.StructureLevelIDs)
@@ -3742,6 +3745,18 @@ func (b *meetingUserBuilder) PollOptionList() *pollConfigOptionBuilder {
 			parent:   b,
 			idField:  "PollOptionIDs",
 			relField: "PollOptionList",
+			many:     true,
+		},
+	}
+}
+
+func (b *meetingUserBuilder) PollVotedList() *pollBuilder {
+	return &pollBuilder{
+		builder: builder[pollBuilder, *pollBuilder, Poll]{
+			fetch:    b.fetch,
+			parent:   b,
+			idField:  "PollVotedIDs",
+			relField: "PollVotedList",
 			many:     true,
 		},
 	}
@@ -5746,7 +5761,7 @@ type Poll struct {
 	AllowInvalid      bool
 	AllowVoteSplit    bool
 	BallotIDs         []int
-	ConfigID          dsfetch.Maybe[string]
+	ConfigID          string
 	ContentObjectID   string
 	EntitledGroupIDs  []int
 	ID                int
@@ -5763,7 +5778,7 @@ type Poll struct {
 	EntitledGroupList []Group
 	Meeting           *Meeting
 	ProjectionList    []Projection
-	VotedList         []User
+	VotedList         []MeetingUser
 }
 
 type pollBuilder struct {
@@ -5843,9 +5858,9 @@ func (b *pollBuilder) ProjectionList() *projectionBuilder {
 	}
 }
 
-func (b *pollBuilder) VotedList() *userBuilder {
-	return &userBuilder{
-		builder: builder[userBuilder, *userBuilder, User]{
+func (b *pollBuilder) VotedList() *meetingUserBuilder {
+	return &meetingUserBuilder{
+		builder: builder[meetingUserBuilder, *meetingUserBuilder, MeetingUser]{
 			fetch:    b.fetch,
 			parent:   b,
 			idField:  "VotedIDs",
@@ -7519,7 +7534,6 @@ type User struct {
 	OrganizationManagementLevel string
 	Password                    string
 	PollCandidateIDs            []int
-	PollVotedIDs                []int
 	Pronoun                     string
 	SamlID                      string
 	Title                       string
@@ -7535,7 +7549,6 @@ type User struct {
 	MeetingUserList             []MeetingUser
 	Organization                *Organization
 	PollCandidateList           []PollCandidate
-	PollVotedList               []Poll
 }
 
 type userBuilder struct {
@@ -7571,7 +7584,6 @@ func (b *userBuilder) lazy(ds *Fetch, id int) *User {
 	ds.User_OrganizationManagementLevel(id).Lazy(&c.OrganizationManagementLevel)
 	ds.User_Password(id).Lazy(&c.Password)
 	ds.User_PollCandidateIDs(id).Lazy(&c.PollCandidateIDs)
-	ds.User_PollVotedIDs(id).Lazy(&c.PollVotedIDs)
 	ds.User_Pronoun(id).Lazy(&c.Pronoun)
 	ds.User_SamlID(id).Lazy(&c.SamlID)
 	ds.User_Title(id).Lazy(&c.Title)
@@ -7708,18 +7720,6 @@ func (b *userBuilder) PollCandidateList() *pollCandidateBuilder {
 			parent:   b,
 			idField:  "PollCandidateIDs",
 			relField: "PollCandidateList",
-			many:     true,
-		},
-	}
-}
-
-func (b *userBuilder) PollVotedList() *pollBuilder {
-	return &pollBuilder{
-		builder: builder[pollBuilder, *pollBuilder, Poll]{
-			fetch:    b.fetch,
-			parent:   b,
-			idField:  "PollVotedIDs",
-			relField: "PollVotedList",
 			many:     true,
 		},
 	}

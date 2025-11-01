@@ -1121,8 +1121,8 @@ func (r *Fetch) Assignment_Title(assignmentID int) *ValueString {
 	return &ValueString{fetch: r, key: key, required: true}
 }
 
-func (r *Fetch) Ballot_ActingUserID(ballotID int) *ValueMaybeInt {
-	key, err := dskey.FromParts("ballot", ballotID, "acting_user_id")
+func (r *Fetch) Ballot_ActingMeetingUserID(ballotID int) *ValueMaybeInt {
+	key, err := dskey.FromParts("ballot", ballotID, "acting_meeting_user_id")
 	if err != nil {
 		return &ValueMaybeInt{err: err}
 	}
@@ -1148,8 +1148,8 @@ func (r *Fetch) Ballot_PollID(ballotID int) *ValueInt {
 	return &ValueInt{fetch: r, key: key, required: true}
 }
 
-func (r *Fetch) Ballot_RepresentedUserID(ballotID int) *ValueMaybeInt {
-	key, err := dskey.FromParts("ballot", ballotID, "represented_user_id")
+func (r *Fetch) Ballot_RepresentedMeetingUserID(ballotID int) *ValueMaybeInt {
+	key, err := dskey.FromParts("ballot", ballotID, "represented_meeting_user_id")
 	if err != nil {
 		return &ValueMaybeInt{err: err}
 	}
@@ -2383,6 +2383,15 @@ func (r *Fetch) MeetingUser_PersonalNoteIDs(meetingUserID int) *ValueIntSlice {
 
 func (r *Fetch) MeetingUser_PollOptionIDs(meetingUserID int) *ValueIntSlice {
 	key, err := dskey.FromParts("meeting_user", meetingUserID, "poll_option_ids")
+	if err != nil {
+		return &ValueIntSlice{err: err}
+	}
+
+	return &ValueIntSlice{fetch: r, key: key}
+}
+
+func (r *Fetch) MeetingUser_PollVotedIDs(meetingUserID int) *ValueIntSlice {
+	key, err := dskey.FromParts("meeting_user", meetingUserID, "poll_voted_ids")
 	if err != nil {
 		return &ValueIntSlice{err: err}
 	}
@@ -6764,13 +6773,13 @@ func (r *Fetch) Poll_BallotIDs(pollID int) *ValueIntSlice {
 	return &ValueIntSlice{fetch: r, key: key}
 }
 
-func (r *Fetch) Poll_ConfigID(pollID int) *ValueMaybeString {
+func (r *Fetch) Poll_ConfigID(pollID int) *ValueString {
 	key, err := dskey.FromParts("poll", pollID, "config_id")
 	if err != nil {
-		return &ValueMaybeString{err: err}
+		return &ValueString{err: err}
 	}
 
-	return &ValueMaybeString{fetch: r, key: key}
+	return &ValueString{fetch: r, key: key, required: true}
 }
 
 func (r *Fetch) Poll_ContentObjectID(pollID int) *ValueString {
@@ -8575,15 +8584,6 @@ func (r *Fetch) User_Password(userID int) *ValueString {
 
 func (r *Fetch) User_PollCandidateIDs(userID int) *ValueIntSlice {
 	key, err := dskey.FromParts("user", userID, "poll_candidate_ids")
-	if err != nil {
-		return &ValueIntSlice{err: err}
-	}
-
-	return &ValueIntSlice{fetch: r, key: key}
-}
-
-func (r *Fetch) User_PollVotedIDs(userID int) *ValueIntSlice {
-	key, err := dskey.FromParts("user", userID, "poll_voted_ids")
 	if err != nil {
 		return &ValueIntSlice{err: err}
 	}
