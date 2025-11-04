@@ -133,10 +133,6 @@ var RelationFields = map[string]string{
 	"personal_note/meeting_user_id":                                          "meeting_user/personal_note_ids",
 	"point_of_order_category/meeting_id":                                     "meeting/point_of_order_category_ids",
 	"poll/meeting_id":                                                        "meeting/poll_ids",
-	"poll_candidate/meeting_id":                                              "meeting/poll_candidate_ids",
-	"poll_candidate/poll_candidate_list_id":                                  "poll_candidate_list/poll_candidate_ids",
-	"poll_candidate/user_id":                                                 "user/poll_candidate_ids",
-	"poll_candidate_list/meeting_id":                                         "meeting/poll_candidate_list_ids",
 	"poll_config_approval/poll_id":                                           "poll/config_id",
 	"poll_config_option/meeting_user_id":                                     "meeting_user/poll_option_ids",
 	"poll_config_rating_approval/poll_id":                                    "poll/config_id",
@@ -268,8 +264,6 @@ var RelationListFields = map[string]string{
 	"meeting/organization_tag_ids":                             "organization_tag/tagged_ids",
 	"meeting/personal_note_ids":                                "personal_note/meeting_id",
 	"meeting/point_of_order_category_ids":                      "point_of_order_category/meeting_id",
-	"meeting/poll_candidate_ids":                               "poll_candidate/meeting_id",
-	"meeting/poll_candidate_list_ids":                          "poll_candidate_list/meeting_id",
 	"meeting/poll_default_group_ids":                           "group/used_as_poll_default_id",
 	"meeting/poll_ids":                                         "poll/meeting_id",
 	"meeting/present_user_ids":                                 "user/is_present_in_meeting_ids",
@@ -351,7 +345,7 @@ var RelationListFields = map[string]string{
 	"poll/entitled_group_ids":                                  "group/poll_ids",
 	"poll/projection_ids":                                      "projection/content_object_id",
 	"poll/voted_ids":                                           "meeting_user/poll_voted_ids",
-	"poll_candidate_list/poll_candidate_ids":                   "poll_candidate/poll_candidate_list_id",
+	"poll_config_approval/option_ids":                          "poll_config_option/poll_config_id",
 	"poll_config_rating_approval/option_ids":                   "poll_config_option/poll_config_id",
 	"poll_config_rating_score/option_ids":                      "poll_config_option/poll_config_id",
 	"poll_config_selection/option_ids":                         "poll_config_option/poll_config_id",
@@ -373,7 +367,6 @@ var RelationListFields = map[string]string{
 	"user/is_present_in_meeting_ids":                           "meeting/present_user_ids",
 	"user/meeting_ids":                                         "meeting/user_ids",
 	"user/meeting_user_ids":                                    "meeting_user/user_id",
-	"user/poll_candidate_ids":                                  "poll_candidate/user_id",
 }
 
 // GenericRelationFields is a map from are all (single) generic relation fields
@@ -386,7 +379,7 @@ var GenericRelationFields = map[string]map[string]string{
 	"personal_note/content_object_id":    {"motion": "personal_note_ids"},
 	"poll/config_id":                     {"poll_config_approval": "poll_id", "poll_config_rating_approval": "poll_id", "poll_config_rating_score": "poll_id", "poll_config_selection": "poll_id"},
 	"poll/content_object_id":             {"assignment": "poll_ids", "motion": "poll_ids", "topic": "poll_ids"},
-	"poll_config_option/poll_config_id":  {"poll_config_rating_approval": "option_ids", "poll_config_rating_score": "option_ids", "poll_config_selection": "option_ids"},
+	"poll_config_option/poll_config_id":  {"poll_config_approval": "option_ids", "poll_config_rating_approval": "option_ids", "poll_config_rating_score": "option_ids", "poll_config_selection": "option_ids"},
 	"projection/content_object_id":       {"agenda_item": "projection_ids", "assignment": "projection_ids", "list_of_speakers": "projection_ids", "meeting": "projection_ids", "meeting_mediafile": "projection_ids", "motion": "projection_ids", "motion_block": "projection_ids", "poll": "projection_ids", "projector_countdown": "projection_ids", "projector_message": "projection_ids", "topic": "projection_ids"},
 }
 
@@ -744,8 +737,6 @@ var RestrictionModes = map[string]string{
 	"meeting/point_of_order_category_ids":                           "B",
 	"meeting/poll_ballot_paper_number":                              "B",
 	"meeting/poll_ballot_paper_selection":                           "B",
-	"meeting/poll_candidate_ids":                                    "B",
-	"meeting/poll_candidate_list_ids":                               "B",
 	"meeting/poll_countdown_id":                                     "B",
 	"meeting/poll_couple_countdown":                                 "B",
 	"meeting/poll_default_allow_invalid":                            "B",
@@ -1120,21 +1111,10 @@ var RestrictionModes = map[string]string{
 	"poll/result":             "B",
 	"poll/voted_ids":          "B",
 
-	// poll_candidate
-	"poll_candidate/id":                     "A",
-	"poll_candidate/meeting_id":             "A",
-	"poll_candidate/poll_candidate_list_id": "A",
-	"poll_candidate/user_id":                "A",
-	"poll_candidate/weight":                 "A",
-
-	// poll_candidate_list
-	"poll_candidate_list/id":                 "A",
-	"poll_candidate_list/meeting_id":         "A",
-	"poll_candidate_list/poll_candidate_ids": "A",
-
 	// poll_config_approval
 	"poll_config_approval/allow_abstain": "A",
 	"poll_config_approval/id":            "A",
+	"poll_config_approval/option_ids":    "A",
 	"poll_config_approval/poll_id":       "A",
 
 	// poll_config_option
@@ -1365,7 +1345,6 @@ var RestrictionModes = map[string]string{
 	"user/last_login":                    "A",
 	"user/last_name":                     "A",
 	"user/meeting_user_ids":              "A",
-	"user/poll_candidate_ids":            "A",
 	"user/pronoun":                       "A",
 	"user/title":                         "A",
 	"user/email":                         "B",
