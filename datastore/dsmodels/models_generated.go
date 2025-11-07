@@ -1670,6 +1670,8 @@ type Meeting struct {
 	MotionsEnableOriginMotionDisplay             bool
 	MotionsEnableReasonOnProjector               bool
 	MotionsEnableRecommendationOnProjector       bool
+	MotionsEnableRestrictedEditorForManager      bool
+	MotionsEnableRestrictedEditorForNonManager   bool
 	MotionsEnableSideboxOnProjector              bool
 	MotionsEnableTextOnProjector                 bool
 	MotionsEnableWorkingGroupSpeaker             bool
@@ -2009,6 +2011,8 @@ func (b *meetingBuilder) lazy(ds *Fetch, id int) *Meeting {
 	ds.Meeting_MotionsEnableOriginMotionDisplay(id).Lazy(&c.MotionsEnableOriginMotionDisplay)
 	ds.Meeting_MotionsEnableReasonOnProjector(id).Lazy(&c.MotionsEnableReasonOnProjector)
 	ds.Meeting_MotionsEnableRecommendationOnProjector(id).Lazy(&c.MotionsEnableRecommendationOnProjector)
+	ds.Meeting_MotionsEnableRestrictedEditorForManager(id).Lazy(&c.MotionsEnableRestrictedEditorForManager)
+	ds.Meeting_MotionsEnableRestrictedEditorForNonManager(id).Lazy(&c.MotionsEnableRestrictedEditorForNonManager)
 	ds.Meeting_MotionsEnableSideboxOnProjector(id).Lazy(&c.MotionsEnableSideboxOnProjector)
 	ds.Meeting_MotionsEnableTextOnProjector(id).Lazy(&c.MotionsEnableTextOnProjector)
 	ds.Meeting_MotionsEnableWorkingGroupSpeaker(id).Lazy(&c.MotionsEnableWorkingGroupSpeaker)
@@ -4736,11 +4740,11 @@ func (r *Fetch) MotionCommentSection(ids ...int) *motionCommentSectionBuilder {
 type MotionEditor struct {
 	ID            int
 	MeetingID     int
-	MeetingUserID int
+	MeetingUserID dsfetch.Maybe[int]
 	MotionID      int
 	Weight        int
 	Meeting       *Meeting
-	MeetingUser   *MeetingUser
+	MeetingUser   *dsfetch.Maybe[MeetingUser]
 	Motion        *Motion
 }
 
@@ -4829,6 +4833,7 @@ type MotionState struct {
 	SetWorkflowTimestamp             bool
 	ShowRecommendationExtensionField bool
 	ShowStateExtensionField          bool
+	StateButtonLabel                 string
 	SubmitterWithdrawBackIDs         []int
 	SubmitterWithdrawStateID         dsfetch.Maybe[int]
 	Weight                           int
@@ -4872,6 +4877,7 @@ func (b *motionStateBuilder) lazy(ds *Fetch, id int) *MotionState {
 	ds.MotionState_SetWorkflowTimestamp(id).Lazy(&c.SetWorkflowTimestamp)
 	ds.MotionState_ShowRecommendationExtensionField(id).Lazy(&c.ShowRecommendationExtensionField)
 	ds.MotionState_ShowStateExtensionField(id).Lazy(&c.ShowStateExtensionField)
+	ds.MotionState_StateButtonLabel(id).Lazy(&c.StateButtonLabel)
 	ds.MotionState_SubmitterWithdrawBackIDs(id).Lazy(&c.SubmitterWithdrawBackIDs)
 	ds.MotionState_SubmitterWithdrawStateID(id).Lazy(&c.SubmitterWithdrawStateID)
 	ds.MotionState_Weight(id).Lazy(&c.Weight)
@@ -5001,11 +5007,11 @@ func (r *Fetch) MotionState(ids ...int) *motionStateBuilder {
 type MotionSubmitter struct {
 	ID            int
 	MeetingID     int
-	MeetingUserID int
+	MeetingUserID dsfetch.Maybe[int]
 	MotionID      int
 	Weight        int
 	Meeting       *Meeting
-	MeetingUser   *MeetingUser
+	MeetingUser   *dsfetch.Maybe[MeetingUser]
 	Motion        *Motion
 }
 
@@ -5178,11 +5184,11 @@ func (r *Fetch) MotionWorkflow(ids ...int) *motionWorkflowBuilder {
 type MotionWorkingGroupSpeaker struct {
 	ID            int
 	MeetingID     int
-	MeetingUserID int
+	MeetingUserID dsfetch.Maybe[int]
 	MotionID      int
 	Weight        int
 	Meeting       *Meeting
-	MeetingUser   *MeetingUser
+	MeetingUser   *dsfetch.Maybe[MeetingUser]
 	Motion        *Motion
 }
 
