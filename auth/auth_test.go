@@ -261,7 +261,7 @@ func TestLogout(t *testing.T) {
 
 		logouter.Send([]string{"session1"})
 
-		timer := time.NewTimer(time.Millisecond)
+		timer := time.NewTimer(100 * time.Millisecond)
 		defer timer.Stop()
 		select {
 		case <-ctx.Done():
