@@ -300,10 +300,12 @@ func createKeyList(collection string, id int) ([]dskey.Key, error) {
 	// TODO: Remove me, if the new vote service and projector service are merged
 	switch collection {
 	case "poll":
+		fields = slices.Clone(fields)
 		fields = slices.DeleteFunc(fields, func(s string) bool {
 			return s == "live_votes"
 		})
 	case "projection":
+		fields = slices.Clone(fields)
 		fields = slices.DeleteFunc(fields, func(s string) bool {
 			return s == "content"
 		})
@@ -314,7 +316,7 @@ func createKeyList(collection string, id int) ([]dskey.Key, error) {
 	for i, field := range fields {
 		keys[i], err = dskey.FromParts(collection, id, field)
 		if err != nil {
-			return nil, fmt.Errorf("creating key from parts: %w", err)
+			return nil, fmt.Errorf("creating key from parts %q, %d, %q: %w", collection, id, field, err)
 		}
 	}
 	return keys, nil
