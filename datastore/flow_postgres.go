@@ -104,12 +104,26 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 	keyValues := make(map[dskey.Key][]byte, len(keys))
 	for collection, ids := range collectionIDs {
+		fields := collectionFields[collection]
+
+		// TODO: Remove me, if the new vote service and projector service are merged
+		switch collection {
+		case "poll":
+			fields = slices.DeleteFunc(fields, func(s string) bool {
+				return s == "live_votes"
+			})
+		case "projection":
+			fields = slices.DeleteFunc(fields, func(s string) bool {
+				return s == "content"
+			})
+		}
+
 		// TODO: if collectionFields[collection] is empty (only id field
 		// requested), then the query is wrong. The comma behind id has to be
 		// deleted in this case.
 		sql := fmt.Sprintf(
 			`SELECT id, %s FROM "%s" WHERE id = ANY ($1) `,
-			strings.Join(collectionFields[collection], ","),
+			strings.Join(fields, ","),
 			collection,
 		)
 
@@ -296,20 +310,6 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 
 func createKeyList(collection string, id int) ([]dskey.Key, error) {
 	fields := collectionFields[collection]
-
-	// TODO: Remove me, if the new vote service and projector service are merged
-	switch collection {
-	case "poll":
-		fields = slices.Clone(fields)
-		fields = slices.DeleteFunc(fields, func(s string) bool {
-			return s == "live_votes"
-		})
-	case "projection":
-		fields = slices.Clone(fields)
-		fields = slices.DeleteFunc(fields, func(s string) bool {
-			return s == "content"
-		})
-	}
 
 	keys := make([]dskey.Key, len(fields))
 	var err error
