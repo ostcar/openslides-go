@@ -193,6 +193,7 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 		PSQLTypeTimestamp   = 1184
 		PSQLTypeDecimal     = 1700
 		PSQLTypeJSON        = 3802
+		PSQLTypeTextList    = 1009
 		PSQLTypeVarCharList = 1015
 		PSQLTypeFloat       = 701
 	)
@@ -226,7 +227,7 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 
 		return []byte(strconv.Itoa(int(timeValue.Unix()))), nil
 
-	case PSQLTypeVarCharList:
+	case PSQLTypeVarCharList, PSQLTypeTextList:
 		strValue := strings.Trim(string(value), "{}")
 		strArray := strings.Split(strValue, ",")
 		return json.Marshal(strArray)
