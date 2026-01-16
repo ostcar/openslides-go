@@ -130,9 +130,6 @@ var RelationFields = map[string]string{
 	"motion_working_group_speaker/meeting_id":                                "meeting/motion_working_group_speaker_ids",
 	"motion_working_group_speaker/meeting_user_id":                           "meeting_user/motion_working_group_speaker_ids",
 	"motion_working_group_speaker/motion_id":                                 "motion/working_group_speaker_ids",
-	"option/meeting_id":                                                      "meeting/option_ids",
-	"option/poll_id":                                                         "poll/option_ids",
-	"option/used_as_global_option_in_poll_id":                                "poll/global_option_id",
 	"organization/theme_id":                                                  "theme/theme_for_organization_id",
 	"organization_tag/organization_id":                                       "organization/organization_tag_ids",
 	"personal_note/meeting_id":                                               "meeting/personal_note_ids",
@@ -186,10 +183,6 @@ var RelationFields = map[string]string{
 	"user/gender_id":                                                         "gender/user_ids",
 	"user/home_committee_id":                                                 "committee/native_user_ids",
 	"user/organization_id":                                                   "organization/user_ids",
-	"vote/delegated_user_id":                                                 "user/delegated_vote_ids",
-	"vote/meeting_id":                                                        "meeting/vote_ids",
-	"vote/option_id":                                                         "option/vote_ids",
-	"vote/user_id":                                                           "user/vote_ids",
 }
 
 // RelationListFields is a map from all relation list fields to the fields,
@@ -341,7 +334,6 @@ var RelationListFields = map[string]string{
 	"motion_state/previous_state_ids":                          "motion_state/next_state_ids",
 	"motion_state/submitter_withdraw_back_ids":                 "motion_state/submitter_withdraw_state_id",
 	"motion_workflow/state_ids":                                "motion_state/workflow_id",
-	"option/vote_ids":                                          "vote/option_id",
 	"organization/active_meeting_ids":                          "meeting/is_active_in_organization_id",
 	"organization/archived_meeting_ids":                        "meeting/is_archived_in_organization_id",
 	"organization/committee_ids":                               "committee/organization_id",
@@ -388,7 +380,6 @@ var GenericRelationFields = map[string]map[string]string{
 	"history_entry/model_id":             {"assignment": "history_entry_ids", "motion": "history_entry_ids", "user": "history_entry_ids"},
 	"list_of_speakers/content_object_id": {"assignment": "list_of_speakers_id", "meeting_mediafile": "list_of_speakers_id", "motion": "list_of_speakers_id", "motion_block": "list_of_speakers_id", "topic": "list_of_speakers_id"},
 	"mediafile/owner_id":                 {"meeting": "mediafile_ids", "organization": "mediafile_ids"},
-	"option/content_object_id":           {"motion": "option_ids", "poll_candidate_list": "option_id", "user": "option_ids"},
 	"personal_note/content_object_id":    {"motion": "personal_note_ids"},
 	"poll/config_id":                     {"poll_config_approval": "poll_id", "poll_config_rating_approval": "poll_id", "poll_config_rating_score": "poll_id", "poll_config_selection": "poll_id"},
 	"poll/content_object_id":             {"assignment": "poll_ids", "motion": "poll_ids", "topic": "poll_ids"},
@@ -585,7 +576,6 @@ var RestrictionModes = map[string]string{
 	"mediafile/token":                                    "A",
 
 	// meeting
-	"meeting/poll_default_allow_vote_split":                         "",
 	"meeting/admin_group_id":                                        "A",
 	"meeting/committee_id":                                          "A",
 	"meeting/forwarded_motion_ids":                                  "A",
@@ -757,6 +747,7 @@ var RestrictionModes = map[string]string{
 	"meeting/poll_countdown_id":                                     "B",
 	"meeting/poll_couple_countdown":                                 "B",
 	"meeting/poll_default_allow_invalid":                            "B",
+	"meeting/poll_default_allow_vote_split":                         "B",
 	"meeting/poll_default_group_ids":                                "B",
 	"meeting/poll_default_live_voting_enabled":                      "B",
 	"meeting/poll_default_method":                                   "B",
@@ -1055,19 +1046,6 @@ var RestrictionModes = map[string]string{
 	"motion_working_group_speaker/meeting_user_id": "A",
 	"motion_working_group_speaker/motion_id":       "A",
 	"motion_working_group_speaker/weight":          "A",
-
-	// option
-	"option/content_object_id": "A",
-	"option/id":                "A",
-	"option/meeting_id":        "A",
-	"option/poll_id":           "A",
-	"option/text":              "A",
-	"option/used_as_global_option_in_poll_id": "A",
-	"option/vote_ids":                         "A",
-	"option/weight":                           "A",
-	"option/abstain":                          "B",
-	"option/no":                               "B",
-	"option/yes":                              "B",
 
 	// organization
 	"organization/active_meeting_ids":               "A",
@@ -1399,14 +1377,4 @@ var RestrictionModes = map[string]string{
 	"user/organization_id":               "F",
 	"user/password":                      "G",
 	"user/default_password":              "H",
-
-	// vote
-	"vote/delegated_user_id": "A",
-	"vote/id":                "A",
-	"vote/meeting_id":        "A",
-	"vote/option_id":         "A",
-	"vote/user_id":           "A",
-	"vote/value":             "A",
-	"vote/weight":            "A",
-	"vote/user_token":        "B",
 }
