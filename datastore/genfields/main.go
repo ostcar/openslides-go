@@ -10,7 +10,7 @@ import (
 	"os"
 	"slices"
 
-	"github.com/OpenSlides/openslides-go/models"
+	"github.com/OpenSlides/openslides-go/collection"
 )
 
 func main() {
@@ -20,15 +20,9 @@ func main() {
 }
 
 func run() error {
-	r, err := os.Open("../meta/models.yml")
+	td, err := parse("../meta")
 	if err != nil {
-		return fmt.Errorf("open models.yml: %w", err)
-	}
-	defer r.Close()
-
-	td, err := parse(r)
-	if err != nil {
-		return fmt.Errorf("parse models.yml: %w", err)
+		return fmt.Errorf("parse collections: %w", err)
 	}
 
 	if err := write(os.Stdout, td); err != nil {
@@ -42,10 +36,10 @@ type templateData struct {
 	Collection map[string][]string
 }
 
-func parse(r io.Reader) (templateData, error) {
-	inData, err := models.Unmarshal(r)
+func parse(path string) (templateData, error) {
+	inData, err := collection.Collections(path)
 	if err != nil {
-		return templateData{}, fmt.Errorf("unmarshalling models.yml: %w", err)
+		return templateData{}, fmt.Errorf("parse collections: %w", err)
 	}
 
 	td := templateData{
@@ -62,7 +56,7 @@ func parse(r io.Reader) (templateData, error) {
 	return td, nil
 }
 
-const tpl = `// Code generated from models.yml DO NOT EDIT.
+const tpl = `// Code generated from meta collections. DO NOT EDIT.
 package datastore
 
 var collectionFields = map[string][]string{
