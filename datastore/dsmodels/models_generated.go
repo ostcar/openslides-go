@@ -5829,7 +5829,7 @@ type Poll struct {
 	AllowInvalid      bool
 	AllowVoteSplit    bool
 	BallotIDs         []int
-	ConfigID          dsfetch.Maybe[string]
+	ConfigID          string
 	ContentObjectID   string
 	EntitledGroupIDs  []int
 	ID                int

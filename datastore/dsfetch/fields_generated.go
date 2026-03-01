@@ -6827,13 +6827,13 @@ func (r *Fetch) Poll_BallotIDs(pollID int) *ValueIntSlice {
 	return &ValueIntSlice{fetch: r, key: key}
 }
 
-func (r *Fetch) Poll_ConfigID(pollID int) *ValueMaybeString {
+func (r *Fetch) Poll_ConfigID(pollID int) *ValueString {
 	key, err := dskey.FromParts("poll", pollID, "config_id")
 	if err != nil {
-		return &ValueMaybeString{err: err}
+		return &ValueString{err: err}
 	}
 
-	return &ValueMaybeString{fetch: r, key: key}
+	return &ValueString{fetch: r, key: key, required: true}
 }
 
 func (r *Fetch) Poll_ContentObjectID(pollID int) *ValueString {
