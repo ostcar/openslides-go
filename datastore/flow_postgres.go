@@ -337,6 +337,10 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 
 // WaitPostgresAvailable blocks until postgres db is availabe
 func WaitPostgresAvailable(lookup environment.Environmenter) error {
+	if _, forDocu := lookup.(*environment.ForDocu); forDocu {
+		return nil
+	}
+
 	addr, err := postgresDSN(lookup)
 	if err != nil {
 		return fmt.Errorf("reading postgres password: %w", err)
