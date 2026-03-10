@@ -263,6 +263,10 @@ func convertValue(value []byte, oid uint32) ([]byte, error) {
 // Update listens on pg notify to fetch updates.
 func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][]byte, error)) {
 	conn, err := pgx.ConnectConfig(ctx, p.notifyConfig)
+	if err != nil {
+		updateFn(nil, fmt.Errorf("create connection to postgres: %w", err))
+		return
+	}
 	defer conn.Close(context.Background())
 
 	_, err = conn.Exec(ctx, "LISTEN os_notify")
