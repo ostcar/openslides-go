@@ -106,6 +106,17 @@ func TestFlowPostgres(t *testing.T) {
 				"history_entry/1/entries": []byte(`["entry1","entry2"]`),
 			},
 		},
+
+		{
+			"String list empty",
+			`
+			INSERT INTO history_position DEFAULT VALUES;
+			INSERT INTO history_entry (entries, position_id) VALUES ('{}', 1);
+			`,
+			map[string][]byte{
+				"history_entry/1/entries": []byte(`[]`),
+			},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := t.Context()
@@ -253,9 +264,10 @@ func TestBigQuery(t *testing.T) {
 	expected := make(map[dskey.Key][]byte)
 	for i := range count {
 		keys[i], _ = dskey.FromParts("user", i+2, "username")
-		expected[keys[i]] = []byte(`"hugo"`)
+		username := fmt.Sprintf("hugo_%d", i+1)
+		expected[keys[i]] = []byte(`"` + username + `"`)
 
-		sql := fmt.Sprintf(`INSERT INTO "user" (id, username) values (%d, 'hugo');`, i+2)
+		sql := fmt.Sprintf(`INSERT INTO "user" (id, username) values (%d, '%s');`, i+2, username)
 		if _, err := conn.Exec(ctx, sql); err != nil {
 			t.Fatalf("adding user %d: %v", i+2, err)
 		}

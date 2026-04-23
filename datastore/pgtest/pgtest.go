@@ -53,7 +53,7 @@ func NewPostgresTest(ctx context.Context) (*PostgresTest, error) {
 
 	runOpts := dockertest.RunOptions{
 		Repository: "postgres",
-		Tag:        "15",
+		Tag:        "17",
 		Env: []string{
 			"POSTGRES_USER=postgres",
 			"POSTGRES_PASSWORD=openslides",
@@ -198,6 +198,7 @@ func (tp *PostgresTest) Cleanup(t *testing.T) {
 	})
 }
 
+// Reset cleans up the pg test environment
 func (tp *PostgresTest) Reset(ctx context.Context) error {
 	// Use different database for drop database
 	config := tp.pgxConfig.Copy()

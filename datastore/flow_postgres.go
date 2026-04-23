@@ -13,6 +13,7 @@ import (
 	"github.com/OpenSlides/openslides-go/datastore/dskey"
 	"github.com/OpenSlides/openslides-go/environment"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -24,37 +25,28 @@ var (
 	envPostgresDatabase     = environment.NewVariable("DATABASE_NAME", "openslides", "Postgres User.")
 	envPostgresUser         = environment.NewVariable("DATABASE_USER", "openslides", "Postgres Database.")
 	envPostgresPasswordFile = environment.NewVariable("DATABASE_PASSWORD_FILE", "/run/secrets/postgres_password", "Postgres Password.")
+
+	envPostgresNotifyHost         = environment.NewVariable("DATABASE_NOTIFY_HOST", "DATABASE_HOST", "Postgres Host for notify.")
+	envPostgresNotifyPort         = environment.NewVariable("DATABASE_NOTIFY_PORT", "DATABASE_PORT", "Postgres Port for notify.")
+	envPostgresNotifyDatabase     = environment.NewVariable("DATABASE_NOTIFY_NAME", "DATABASE_NAME", "Postgres Database for notify.")
+	envPostgresNotifyUser         = environment.NewVariable("DATABASE_NOTIFY_USER", "DATABASE_USER", "Postgres User for notify.")
+	envPostgresNotifyPasswordFile = environment.NewVariable("DATABASE_NOTIFY_PASSWORD_FILE", "DATABASE_PASSWORD_FILE", "Postgres Password for notify.")
 )
 
 // FlowPostgres uses postgres to get the connections.
 type FlowPostgres struct {
-	Pool *pgxpool.Pool
-}
-
-// encodePostgresConfig encodes a string to be used in the postgres key value style.
-//
-// See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
-func encodePostgresConfig(s string) string {
-	s = strings.ReplaceAll(s, `\`, `\\`)
-	s = strings.ReplaceAll(s, `'`, `\'`)
-	return s
+	Pool         *pgxpool.Pool
+	notifyConfig *pgx.ConnConfig
+	enums        map[uint32]struct{}
+	enumArray    map[uint32]struct{}
 }
 
 // NewFlowPostgres initializes a SourcePostgres.
 func NewFlowPostgres(lookup environment.Environmenter) (*FlowPostgres, error) {
-	password, err := environment.ReadSecret(lookup, envPostgresPasswordFile)
+	addr, err := postgresDSN(lookup)
 	if err != nil {
-		return nil, fmt.Errorf("reading postgres password: %w", err)
+		return nil, fmt.Errorf("reading postgres dns: %w", err)
 	}
-
-	addr := fmt.Sprintf(
-		`user='%s' password='%s' host='%s' port='%s' dbname='%s'`,
-		encodePostgresConfig(envPostgresUser.Value(lookup)),
-		encodePostgresConfig(password),
-		encodePostgresConfig(envPostgresHost.Value(lookup)),
-		encodePostgresConfig(envPostgresPort.Value(lookup)),
-		encodePostgresConfig(envPostgresDatabase.Value(lookup)),
-	)
 
 	config, err := pgxpool.ParseConfig(addr)
 	if err != nil {
@@ -63,14 +55,62 @@ func NewFlowPostgres(lookup environment.Environmenter) (*FlowPostgres, error) {
 
 	config.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeSimpleProtocol
 
-	pool, err := pgxpool.NewWithConfig(context.Background(), config)
+	ctx := context.Background()
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		return nil, fmt.Errorf("creating connection pool: %w", err)
 	}
 
-	flow := FlowPostgres{Pool: pool}
+	notifyAddr, err := postgresDSNNotify(lookup)
+	if err != nil {
+		return nil, fmt.Errorf("reading postgres dns for notify: %w", err)
+	}
+
+	notifyConf, err := pgx.ParseConfig(notifyAddr)
+	if err != nil {
+		return nil, fmt.Errorf("generate config for notify: %w", err)
+	}
+
+	flow := FlowPostgres{
+		Pool:         pool,
+		notifyConfig: notifyConf,
+	}
+
+	if err := flow.updateEnums(ctx); err != nil {
+		return nil, err
+	}
 
 	return &flow, nil
+}
+
+func (p *FlowPostgres) updateEnums(ctx context.Context) error {
+	c, err := p.Pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer c.Release()
+
+	sql := `SELECT oid, typarray FROM pg_type WHERE typtype = 'e';`
+	rows, err := c.Conn().Query(ctx, sql)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	p.enums = map[uint32]struct{}{}
+	p.enumArray = map[uint32]struct{}{}
+	for rows.Next() {
+		var oid uint32
+		var typarray uint32
+		if err := rows.Scan(&oid, &typarray); err != nil {
+			return err
+		}
+
+		p.enums[oid] = struct{}{}
+		p.enumArray[typarray] = struct{}{}
+	}
+
+	return nil
 }
 
 // Close closes the connection pool.
@@ -86,15 +126,16 @@ func (p *FlowPostgres) Get(ctx context.Context, keys ...dskey.Key) (map[dskey.Ke
 	}
 	defer conn.Release()
 
-	return getWithConn(ctx, conn.Conn(), keys...)
+	return p.getWithConn(ctx, conn.Conn(), keys...)
 }
 
-func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
+func (p *FlowPostgres) getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[dskey.Key][]byte, error) {
 	collectionIDs := make(map[string][]int)
 	collectionFields := make(map[string][]string)
 
 	for _, key := range keys {
 		collection := key.Collection()
+
 		collectionIDs[collection] = append(collectionIDs[collection], key.ID())
 
 		if field := key.Field(); field != "id" {
@@ -104,7 +145,6 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 
 	for collection := range collectionIDs {
 		slices.Sort(collectionIDs[collection])
-		collectionIDs[collection] = slices.Compact(collectionIDs[collection])
 	}
 
 	for collection := range collectionFields {
@@ -164,7 +204,7 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 						continue
 					}
 
-					keyValues[key], err = convertValue(value, fieldDescription[i].DataTypeOID)
+					keyValues[key], err = p.convertValue(value, fieldDescription[i].DataTypeOID)
 					if err != nil {
 						return fmt.Errorf("convert value for field %s/%s: %w", collection, field, err)
 					}
@@ -188,69 +228,70 @@ func getWithConn(ctx context.Context, conn *pgx.Conn, keys ...dskey.Key) (map[ds
 	return result, nil
 }
 
-func convertValue(value []byte, oid uint32) ([]byte, error) {
-	const (
-		PSQLTypeVarChar     = 1043
-		PSQLTypeInt         = 23
-		PSQLTypeBool        = 16
-		PSQLTypeText        = 25
-		PSQLTypeIntList     = 1007
-		PSQLTypeTimestamp   = 1184
-		PSQLTypeDecimal     = 1700
-		PSQLTypeJSON        = 3802
-		PSQLTypeTextList    = 1009
-		PSQLTypeVarCharList = 1015
-		PSQLTypeFloat       = 701
-	)
-
+func (p *FlowPostgres) convertValue(value []byte, oid uint32) ([]byte, error) {
 	switch oid {
-	case PSQLTypeVarChar, PSQLTypeText:
+	case pgtype.VarcharOID, pgtype.TextOID:
 		return json.Marshal(string(value))
 
-	case PSQLTypeInt, PSQLTypeJSON, PSQLTypeFloat:
+	case pgtype.Int4OID, pgtype.Float8OID, pgtype.JSONBOID:
 		return bytes.Clone(value), nil
 
-	case PSQLTypeIntList:
+	case pgtype.Int4ArrayOID:
 		result := make([]byte, len(value))
 		copy(result, value)
 		result[0] = '['
 		result[len(result)-1] = ']'
 		return result, nil
 
-	case PSQLTypeBool:
+	case pgtype.BoolOID:
 		if string(value) == "t" {
 			return []byte("true"), nil
 		}
 		return []byte("false"), nil
 
-	case PSQLTypeDecimal:
+	case pgtype.NumericOID:
 		return fmt.Appendf(nil, `"%s"`, value), nil
 
-	case PSQLTypeTimestamp:
+	case pgtype.TimestamptzOID:
 		timeValue, err := time.Parse("2006-01-02 15:04:05-07", string(value))
 		if err != nil {
 			return nil, fmt.Errorf("parsing time %s: %w", value, err)
 		}
 		return strconv.AppendInt(nil, timeValue.Unix(), 10), nil
 
-	case PSQLTypeVarCharList, PSQLTypeTextList:
-		strValue := strings.Trim(string(value), "{}")
-		strArray := strings.Split(strValue, ",")
-		return json.Marshal(strArray)
+	case pgtype.VarcharArrayOID, pgtype.TextArrayOID:
+		return convertPGArray(string(value))
 
 	default:
+		if _, ok := p.enums[oid]; ok {
+			return json.Marshal(string(value))
+		}
+		if _, ok := p.enumArray[oid]; ok {
+			return convertPGArray(string(value))
+		}
+
 		return nil, fmt.Errorf("unsupported postgres type %d", oid)
 	}
 }
 
+// convertPGArray transforms a postgres style array into a json array.
+func convertPGArray(pgValue string) ([]byte, error) {
+	strValue := strings.Trim(string(pgValue), "{}")
+	if strValue == "" {
+		return []byte("[]"), nil
+	}
+	strArray := strings.Split(strValue, ",")
+	return json.Marshal(strArray)
+}
+
 // Update listens on pg notify to fetch updates.
 func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][]byte, error)) {
-	conn, err := p.Pool.Acquire(ctx)
+	conn, err := pgx.ConnectConfig(ctx, p.notifyConfig)
 	if err != nil {
-		updateFn(nil, fmt.Errorf("acquire connection: %w", err))
+		updateFn(nil, fmt.Errorf("create connection to postgres: %w", err))
 		return
 	}
-	defer conn.Release()
+	defer conn.Close(context.Background())
 
 	_, err = conn.Exec(ctx, "LISTEN os_notify")
 	if err != nil {
@@ -259,7 +300,7 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 	}
 
 	for {
-		notification, err := conn.Conn().WaitForNotification(ctx)
+		notification, err := conn.WaitForNotification(ctx)
 		if err != nil {
 			updateFn(nil, fmt.Errorf("wait for notification: %w", err))
 			return
@@ -274,55 +315,131 @@ func (p *FlowPostgres) Update(ctx context.Context, updateFn func(map[dskey.Key][
 			return
 		}
 
-		sql := `SELECT DISTINCT fqid FROM os_notify_log_t WHERE xact_id = $1::xid8;`
-		rows, err := conn.Conn().Query(ctx, sql, payload.XACTID)
+		sql := `SELECT DISTINCT operation, fqid, updated_fields FROM os_notify_log_t WHERE xact_id = $1::xid8;`
+		rows, err := conn.Query(ctx, sql, payload.XACTID)
 		if err != nil {
 			updateFn(nil, fmt.Errorf("query fqids for transaction %d: %w", payload.XACTID, err))
 			return
 		}
 
-		fqids, err := pgx.CollectRows(rows, pgx.RowTo[string])
+		updateLogs, err := pgx.CollectRows(rows, pgx.RowToStructByName[struct {
+			Operation     string
+			Fqid          string
+			UpdatedFields []string
+		}])
 		if err != nil {
-			updateFn(nil, fmt.Errorf("parse rows: %w", err))
+			updateFn(nil, fmt.Errorf("parse notify_log: %w", err))
 			return
 		}
 
-		var allKeys []dskey.Key
-		for _, fqid := range fqids {
-			collectionName, id, err := getCollectionNameAndID(fqid)
+		var deletedKeys []dskey.Key
+		var updatedKeys []dskey.Key
+		for _, updateLog := range updateLogs {
+			collectionName, id, err := getCollectionNameAndID(updateLog.Fqid)
 			if err != nil {
-				updateFn(nil, fmt.Errorf("split fqid from %s: %w", fqid, err))
+				updateFn(nil, fmt.Errorf("split fqid from %s: %w", updateLog.Fqid, err))
 				return
 			}
 
-			keys, err := createKeyList(collectionName, id)
+			keys, err := createKeyList(collectionName, id, updateLog.UpdatedFields)
 			if err != nil {
 				updateFn(nil, fmt.Errorf("creating key list from notification: %w", err))
 				return
 			}
 
-			allKeys = append(allKeys, keys...)
+			switch updateLog.Operation {
+			case "delete":
+				deletedKeys = append(deletedKeys, keys...)
+			case "insert", "update":
+				updatedKeys = append(updatedKeys, keys...)
+			}
 		}
 
-		values, err := getWithConn(ctx, conn.Conn(), allKeys...)
+		// TODO: don't use getWithConn for insert operation
+		values, err := p.Get(ctx, updatedKeys...)
 		if err != nil {
-			updateFn(nil, fmt.Errorf("fetching keys %v: %w", allKeys, err))
+			updateFn(nil, fmt.Errorf("fetching keys %v: %w", updatedKeys, err))
+			return
+		}
+
+		if values == nil && len(deletedKeys) != 0 {
+			values = map[dskey.Key][]byte{}
+		}
+
+		for _, key := range deletedKeys {
+			values[key] = nil
 		}
 
 		updateFn(values, nil)
 	}
 }
 
-func createKeyList(collection string, id int) ([]dskey.Key, error) {
-	fields := collectionFields[collection]
+// WaitPostgresAvailable blocks until postgres db is availabe
+func WaitPostgresAvailable(lookup environment.Environmenter) error {
+	if _, forDocu := lookup.(*environment.ForDocu); forDocu {
+		return nil
+	}
 
-	keys := make([]dskey.Key, len(fields))
-	var err error
-	for i, field := range fields {
-		keys[i], err = dskey.FromParts(collection, id, field)
-		if err != nil {
-			return nil, fmt.Errorf("creating key from parts %q, %d, %q: %w", collection, id, field, err)
+	addr, err := postgresDSN(lookup)
+	if err != nil {
+		return fmt.Errorf("reading postgres password: %w", err)
+	}
+
+	var conn *pgx.Conn
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+
+		conn, err = pgx.Connect(ctx, addr)
+		if err == nil {
+			err = conn.Ping(ctx)
+
+			if err == nil {
+				err = waitDatabaseInitialized(ctx, conn)
+			}
+
+			_ = conn.Close(context.Background())
 		}
+
+		cancel()
+		if err != nil {
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		return nil
+	}
+}
+
+// waitDatabaseInitialized checks if the version table is existing and the latest migration is finalized
+func waitDatabaseInitialized(ctx context.Context, conn *pgx.Conn) error {
+	for {
+		var cnt int64
+		err := conn.QueryRow(ctx, "SELECT COUNT(*) FROM version").Scan(&cnt)
+		if err == nil && cnt >= 1 {
+			return nil
+		}
+
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func createKeyList(collection string, id int, fields []string) ([]dskey.Key, error) {
+	if len(fields) == 0 {
+		fields = collectionFields[collection]
+	}
+
+	keys := make([]dskey.Key, 0, len(fields))
+	for _, field := range fields {
+		key, err := dskey.FromParts(collection, id, field)
+		if err != nil {
+			continue
+		}
+
+		keys = append(keys, key)
 	}
 	return keys, nil
 }
@@ -355,4 +472,54 @@ func getCollectionNameAndID(keyStr string) (string, int, error) {
 	// Can be removed when this is merged:
 	// https://github.com/OpenSlides/openslides-meta/pull/240
 	return strings.TrimSuffix(keyStr[:idx1], "_t"), id, nil
+}
+
+// encodePostgresConfig encodes a string to be used in the postgres key value style.
+//
+// See: https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING
+func encodePostgresConfig(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `'`, `\'`)
+	return s
+}
+
+func postgresDSN(lookup environment.Environmenter) (string, error) {
+	password, err := environment.ReadSecret(lookup, envPostgresPasswordFile)
+	if err != nil {
+		return "", fmt.Errorf("reading postgres password: %w", err)
+	}
+
+	return postgresConfigString(
+		encodePostgresConfig(envPostgresHost.Value(lookup)),
+		encodePostgresConfig(envPostgresPort.Value(lookup)),
+		encodePostgresConfig(envPostgresDatabase.Value(lookup)),
+		encodePostgresConfig(envPostgresUser.Value(lookup)),
+		encodePostgresConfig(password),
+	), nil
+}
+
+func postgresDSNNotify(lookup environment.Environmenter) (string, error) {
+	password, err := environment.ReadSecretOr(lookup, envPostgresNotifyPasswordFile, envPostgresPasswordFile)
+	if err != nil {
+		return "", fmt.Errorf("reading postgres password: %w", err)
+	}
+
+	return postgresConfigString(
+		encodePostgresConfig(envPostgresNotifyHost.ValueOr(lookup, envPostgresHost)),
+		encodePostgresConfig(envPostgresNotifyPort.ValueOr(lookup, envPostgresPort)),
+		encodePostgresConfig(envPostgresNotifyDatabase.ValueOr(lookup, envPostgresDatabase)),
+		encodePostgresConfig(envPostgresNotifyUser.ValueOr(lookup, envPostgresUser)),
+		encodePostgresConfig(password),
+	), nil
+}
+
+func postgresConfigString(host, port, db, user, password string) string {
+	return fmt.Sprintf(
+		`user='%s' password='%s' host='%s' port='%s' dbname='%s'`,
+		encodePostgresConfig(user),
+		encodePostgresConfig(password),
+		encodePostgresConfig(host),
+		encodePostgresConfig(port),
+		encodePostgresConfig(db),
+	)
 }

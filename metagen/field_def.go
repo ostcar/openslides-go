@@ -13,6 +13,7 @@ var RelationFields = map[string]string{
 	"assignment_candidate/meeting_id":                                        "meeting/assignment_candidate_ids",
 	"assignment_candidate/meeting_user_id":                                   "meeting_user/assignment_candidate_ids",
 	"ballot/acting_meeting_user_id":                                          "meeting_user/acting_ballot_ids",
+	"ballot/meeting_id":                                                      "meeting/ballot_ids",
 	"ballot/poll_id":                                                         "poll/ballot_ids",
 	"ballot/represented_meeting_user_id":                                     "meeting_user/represented_ballot_ids",
 	"chat_group/meeting_id":                                                  "meeting/chat_group_ids",
@@ -232,6 +233,7 @@ var RelationListFields = map[string]string{
 	"meeting/assignment_candidate_ids":                         "assignment_candidate/meeting_id",
 	"meeting/assignment_ids":                                   "assignment/meeting_id",
 	"meeting/assignment_poll_default_group_ids":                "group/used_as_assignment_poll_default_id",
+	"meeting/ballot_ids":                                       "ballot/meeting_id",
 	"meeting/chat_group_ids":                                   "chat_group/meeting_id",
 	"meeting/chat_message_ids":                                 "chat_message/meeting_id",
 	"meeting/default_projector_agenda_item_list_ids":           "projector/used_as_default_projector_for_agenda_item_list_in_meeting_id",
@@ -452,6 +454,7 @@ var RestrictionModes = map[string]string{
 
 	// ballot
 	"ballot/id":                          "A",
+	"ballot/meeting_id":                  "A",
 	"ballot/poll_id":                     "A",
 	"ballot/split":                       "B",
 	"ballot/value":                       "B",
@@ -609,6 +612,7 @@ var RestrictionModes = map[string]string{
 	"meeting/assignment_poll_sort_poll_result_by_votes":             "B",
 	"meeting/assignments_export_preamble":                           "B",
 	"meeting/assignments_export_title":                              "B",
+	"meeting/ballot_ids":                                            "B",
 	"meeting/chat_group_ids":                                        "B",
 	"meeting/chat_message_ids":                                      "B",
 	"meeting/custom_translations":                                   "B",
@@ -813,6 +817,7 @@ var RestrictionModes = map[string]string{
 	"meeting/locked_from_inside":                                    "F",
 	"meeting/meeting_user_ids":                                      "F",
 	"meeting/start_time":                                            "F",
+	"meeting/time_zone":                                             "F",
 
 	// meeting_mediafile
 	"meeting_mediafile/access_group_ids":                               "A",
@@ -891,6 +896,7 @@ var RestrictionModes = map[string]string{
 	"motion/change_recommendation_ids":                         "C",
 	"motion/comment_ids":                                       "C",
 	"motion/created":                                           "C",
+	"motion/diff_version":                                      "C",
 	"motion/identical_motion_ids":                              "C",
 	"motion/last_modified":                                     "C",
 	"motion/lead_motion_id":                                    "C",
@@ -1066,6 +1072,7 @@ var RestrictionModes = map[string]string{
 	"organization/template_meeting_ids":                         "A",
 	"organization/theme_id":                                     "A",
 	"organization/theme_ids":                                    "A",
+	"organization/time_zone":                                    "A",
 	"organization/url":                                          "A",
 	"organization/users_email_body":                             "A",
 	"organization/users_email_replyto":                          "A",
@@ -1171,6 +1178,7 @@ var RestrictionModes = map[string]string{
 	"poll_option/weight":          "A",
 
 	// projection
+	"projection/content":              "A",
 	"projection/content_object_id":    "A",
 	"projection/current_projector_id": "A",
 	"projection/history_projector_id": "A",
