@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 
 	"github.com/OpenSlides/openslides-go/datastore/dstypes"
-	"github.com/OpenSlides/openslides-go/datastore/maybe"
+	"github.com/OpenSlides/openslides-go/maybe"
 	"github.com/shopspring/decimal"
 )
 

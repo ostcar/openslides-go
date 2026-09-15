@@ -10,7 +10,7 @@ import (
 
 	"github.com/OpenSlides/openslides-go/datastore/dsfetch"
 	"github.com/OpenSlides/openslides-go/datastore/dstypes"
-	"github.com/OpenSlides/openslides-go/datastore/maybe"
+	"github.com/OpenSlides/openslides-go/maybe"
 )
 
 // TPermission is a type of all valid permission strings.

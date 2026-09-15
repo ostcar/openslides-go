@@ -4,7 +4,7 @@ import (
 	"context"
 	"reflect"
 
-	"github.com/OpenSlides/openslides-go/datastore/maybe"
+	"github.com/OpenSlides/openslides-go/maybe"
 )
 
 type builderWrapperI interface {

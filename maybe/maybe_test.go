@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/OpenSlides/openslides-go/datastore/maybe"
+	"github.com/OpenSlides/openslides-go/maybe"
 )
 
 func TestMaybe(t *testing.T) {
