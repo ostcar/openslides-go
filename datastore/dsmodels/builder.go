@@ -92,7 +92,14 @@ func (b *builder[C, T, M]) Preload(rel builderWrapperI) {
 func getRelationIds(idField reflect.Value, targetField reflect.Value, many bool) []int {
 	ids := []int{}
 	if many {
-		ids = idField.Interface().([]int)
+		if idField.Type().Name() == "Maybe[[]int]" {
+			maybeIds := idField.Interface().(maybe.Maybe[[]int])
+			if val, set := maybeIds.Value(); set {
+				ids = val
+			}
+		} else {
+			ids = idField.Interface().([]int)
+		}
 	} else if idField.Kind() == reflect.Int {
 		ids = append(ids, int(idField.Int()))
 	} else if idField.Type().Name() == "Maybe[int]" {
