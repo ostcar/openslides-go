@@ -4,8 +4,8 @@ import "encoding/json"
 
 // Maybe holds a type or null.
 type Maybe[T any] struct {
-	hasValue bool
 	value    T
+	hasValue bool
 }
 
 // New initializes a Maybe with a value.
