@@ -8,8 +8,8 @@ type Maybe[T any] struct {
 	value    T
 }
 
-// MaybeValue initializes a Maybe with a value.
-func MaybeValue[T any](v T) Maybe[T] {
+// New initializes a Maybe with a value.
+func New[T any](v T) Maybe[T] {
 	return Maybe[T]{
 		hasValue: true,
 		value:    v,

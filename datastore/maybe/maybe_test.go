@@ -32,7 +32,7 @@ func TestMaybe(t *testing.T) {
 		t.Errorf("setted Maybe[int].Value() == %v, expected 0", got)
 	}
 
-	other := maybe.MaybeValue(0)
+	other := maybe.New(0)
 
 	if other != maybeInt {
 		t.Errorf("setted Maybe[int] != MaybeValue: %v, %v", other, maybeInt)
