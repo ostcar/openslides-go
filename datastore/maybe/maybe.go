@@ -1,4 +1,4 @@
-package dsfetch
+package maybe
 
 import "encoding/json"
 
@@ -42,6 +42,13 @@ func (m *Maybe[T]) OrZero() T {
 		return m.value
 	}
 	return *new(T)
+}
+
+func (m *Maybe[T]) OrElse(v T) T {
+	if m.hasValue {
+		return m.value
+	}
+	return v
 }
 
 func (m *Maybe[T]) UnmarshalJSON(bs []byte) error {

@@ -10,6 +10,7 @@ import (
 
 	"github.com/OpenSlides/openslides-go/datastore/dsfetch"
 	"github.com/OpenSlides/openslides-go/datastore/dstypes"
+	"github.com/OpenSlides/openslides-go/datastore/maybe"
 )
 
 // TPermission is a type of all valid permission strings.
@@ -294,7 +295,7 @@ func ManagementLevelCommittees(ctx context.Context, ds *dsfetch.Fetch, userID in
 		return nil, nil
 	}
 
-	committeeChildIDs := make([]dsfetch.Maybe[[]int], len(committeeIDs))
+	committeeChildIDs := make([]maybe.Maybe[[]int], len(committeeIDs))
 	for i, id := range committeeIDs {
 		ds.Committee_AllChildIDs(id).Lazy(&committeeChildIDs[i])
 	}

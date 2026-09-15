@@ -8,6 +8,7 @@ import (
 
 	"github.com/OpenSlides/openslides-go/datastore/dskey"
 	"github.com/OpenSlides/openslides-go/datastore/dstypes"
+	"github.com/OpenSlides/openslides-go/datastore/maybe"
 	"github.com/OpenSlides/openslides-go/fastjson"
 	"github.com/shopspring/decimal"
 )
@@ -399,13 +400,13 @@ func (v *ValueJSON) setLazy(p []byte) error {
 type ValueMaybe[T any] struct {
 	err    error
 	key    dskey.Key
-	lazies []*Maybe[T]
+	lazies []*maybe.Maybe[T]
 	fetch  *Fetch
 }
 
 // Value returns the value.
-func (v *ValueMaybe[T]) Value(ctx context.Context) (Maybe[T], error) {
-	var zero Maybe[T]
+func (v *ValueMaybe[T]) Value(ctx context.Context) (maybe.Maybe[T], error) {
+	var zero maybe.Maybe[T]
 	if err := v.err; err != nil {
 		return zero, v.err
 	}
@@ -426,18 +427,18 @@ func (v *ValueMaybe[T]) Value(ctx context.Context) (Maybe[T], error) {
 // Lazy sets a value as soon as it es executed.
 //
 // Make sure to call request.Execute() before using the value.
-func (v *ValueMaybe[T]) Lazy(value *Maybe[T]) {
+func (v *ValueMaybe[T]) Lazy(value *maybe.Maybe[T]) {
 	v.fetch.requested[v.key] = append(v.fetch.requested[v.key], v)
 	v.lazies = append(v.lazies, value)
 }
 
 // convert converts the json value to the type.
-func (v *ValueMaybe[T]) convert(p []byte) (Maybe[T], error) {
-	var zero Maybe[T]
+func (v *ValueMaybe[T]) convert(p []byte) (maybe.Maybe[T], error) {
+	var zero maybe.Maybe[T]
 	if p == nil {
 		return zero, nil
 	}
-	var value Maybe[T]
+	var value maybe.Maybe[T]
 	if err := json.Unmarshal(p, &value); err != nil {
 		return zero, fmt.Errorf("decoding value %q: %w", p, err)
 	}

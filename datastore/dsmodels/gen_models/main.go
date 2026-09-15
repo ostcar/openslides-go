@@ -85,9 +85,9 @@ func genHeader(buf *bytes.Buffer) error {
 
 var typesToGo = map[string]string{
 	"ValueInt":           "int",
-	"ValueMaybe[int]":    "dsfetch.Maybe[int]",
+	"ValueMaybe[int]":    "maybe.Maybe[int]",
 	"ValueString":        "string",
-	"ValueMaybe[string]": "dsfetch.Maybe[string]",
+	"ValueMaybe[string]": "maybe.Maybe[string]",
 	"ValueDecimal":       "decimal.Decimal",
 	"ValueBool":          "bool",
 	"ValueFloat":         "float64",
@@ -190,7 +190,7 @@ func toCollections(raw map[string]collection.Collection) []Collection {
 			}
 
 			if !collectionField.Required {
-				goType = fmt.Sprintf("dsfetch.Maybe[%s]", goType)
+				goType = fmt.Sprintf("maybe.Maybe[%s]", goType)
 			}
 
 			col.Fields = append(
@@ -218,7 +218,7 @@ func toCollections(raw map[string]collection.Collection) []Collection {
 
 			resultType := fmt.Sprintf("*%s", toType)
 			if !relation.List() && !collectionField.Required {
-				resultType = fmt.Sprintf("*dsfetch.Maybe[%s]", toType)
+				resultType = fmt.Sprintf("*maybe.Maybe[%s]", toType)
 			}
 			if relation.List() {
 				resultType = fmt.Sprintf("[]%s", toType)

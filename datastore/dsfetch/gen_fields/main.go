@@ -90,7 +90,7 @@ var typesToGo = map[string]string{
 	"ValueJSON":        "json.RawMessage",
 	"ValueIntSlice":    "[]int",
 	"ValueStringSlice": "[]string",
-	"ValueMaybe":       "Maybe[T]",
+	"ValueMaybe":       "maybe.Maybe[T]",
 }
 
 func genValueTypes(buf *bytes.Buffer) error {
